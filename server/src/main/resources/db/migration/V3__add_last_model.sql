@@ -1,0 +1,3 @@
+ALTER TABLE agent
+    ADD COLUMN IF NOT EXISTS "lastModel" VARCHAR(255);
+

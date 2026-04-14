@@ -1,0 +1,22 @@
+# Build çıktıları (image içinde gradle build yapılıyor)
+.gradle
+**/build/
+
+# IDE
+.idea
+*.iml
+*.ipr
+*.iws
+
+# Not: composeApp Gradle yapılandırması için kopyalanıyor
+
+# Git & diğer
+.git
+.gitignore
+*.md
+.DS_Store
+
+# Docker (recursive build önleme)
+Dockerfile*
+docker-compose*
+.dockerignore

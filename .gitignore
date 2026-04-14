@@ -1,0 +1,56 @@
+# Gradle
+.gradle/
+build/
+
+# IntelliJ / Android Studio
+.idea/
+*.iml
+*.ipr
+*.iws
+out/
+
+# Kotlin
+*.class
+*.jar
+*.war
+*.log
+
+# Local config (env, secrets)
+.env
+.env.local
+*.local
+local.properties
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Kotlin Multiplatform / Compose
+composeApp/build/
+server/build/
+shared/build/
+.kotlin/
+kotlin-js-store/
+
+# Node (Compose for Web / npm)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Docker
+*.log
+
+# Cursor / IDE / AI tools
+.cursor/
+.serena/
+agent-transcripts/
+.cursorignore
+
+# Swagger / generated
+docs/.swagger-codegen/
+
+# Misc
+*.swp
+*.swo
+*~

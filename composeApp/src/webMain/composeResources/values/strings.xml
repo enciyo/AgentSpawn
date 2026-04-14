@@ -1,0 +1,12 @@
+<resources>
+    <string name="open_chat">Open Chat</string>
+    <string name="login">Login</string>
+    <string name="logout">Logout</string>
+    <string name="home">Home</string>
+    <string name="login_description">After login, please refresh the page</string>
+    <string name="new_agent">New Agent</string>
+    <string name="no_agents">No Agents Yet</string>
+    <string name="input_place_holder">Ask something</string>
+    <string name="thinking">Thinking...</string>
+    <string name="search">Search</string>
+</resources>
