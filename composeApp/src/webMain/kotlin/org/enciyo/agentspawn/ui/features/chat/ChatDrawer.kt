@@ -2,10 +2,10 @@ package org.enciyo.agentspawn.ui.features.chat
 
 import agentspawn.composeapp.generated.resources.Res
 import agentspawn.composeapp.generated.resources.home
-import agentspawn.composeapp.generated.resources.logout
 import agentspawn.composeapp.generated.resources.new_agent
 import agentspawn.composeapp.generated.resources.no_agents
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -15,9 +15,13 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.CreateNewFolder
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import org.enciyo.agentspawn.api.AgentDto
 import org.enciyo.agentspawn.api.AgentStatus.*
@@ -48,12 +52,26 @@ internal fun DrawerContent(
             onHome = actions.onHome,
             onNewAgent = actions.onNewAgent,
         )
-        HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-        AgentList(
-            agents = state.agents,
-            selectedAgentId = state.selectedAgentId,
-            onAgent = actions.onAgent,
+        GroupingToggle(
+            isGrouped = state.isGrouped,
+            onToggle = actions.onToggleGrouping,
         )
+        HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+        if (state.isGrouped) {
+            ProviderGroupedAgentList(
+                groups = state.providerGroups.filter { it.agents.isNotEmpty() },
+                selectedAgentId = state.selectedAgentId,
+                selectedProviderId = state.selectedProviderId,
+                onAgent = actions.onAgent,
+                onSelectProvider = actions.onSelectProvider,
+            )
+        } else {
+            FlatAgentList(
+                agents = state.agents,
+                selectedAgentId = state.selectedAgentId,
+                onAgent = actions.onAgent,
+            )
+        }
     }
 }
 
@@ -79,7 +97,32 @@ private fun DrawerActions(
 }
 
 @Composable
-private fun AgentList(
+private fun GroupingToggle(
+    isGrouped: Boolean,
+    onToggle: () -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 12.dp, vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween,
+    ) {
+        Text(
+            text = "Group by provider",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Switch(
+            checked = isGrouped,
+            onCheckedChange = { onToggle() },
+            modifier = Modifier.scale(0.75f),
+        )
+    }
+}
+
+@Composable
+private fun FlatAgentList(
     agents: List<AgentDto>,
     selectedAgentId: String?,
     onAgent: (AgentDto) -> Unit,
@@ -89,13 +132,12 @@ private fun AgentList(
         modifier = modifier,
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        if (agents.isEmpty())
+        if (agents.isEmpty()) {
             item {
-                AnimatedVisibility(agents.isEmpty()) {
-                    AppItem(state = AppItemState.textOnly(stringResource(Res.string.no_agents)))
-                }
+                AppItem(state = AppItemState.textOnly(stringResource(Res.string.no_agents)))
             }
-        items(agents) { agent ->
+        }
+        items(agents, key = { it.id }) { agent ->
             AgentItem(
                 agent = agent,
                 isSelected = selectedAgentId == agent.id,
@@ -103,6 +145,74 @@ private fun AgentList(
             )
         }
     }
+}
+
+@Composable
+private fun ProviderGroupedAgentList(
+    groups: List<ProviderGroup>,
+    selectedAgentId: String?,
+    selectedProviderId: String,
+    onAgent: (AgentDto) -> Unit,
+    onSelectProvider: (String) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    LazyColumn(
+        modifier = modifier,
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        if (groups.isEmpty()) {
+            item {
+                AppItem(state = AppItemState.textOnly(stringResource(Res.string.no_agents)))
+            }
+        }
+
+        groups.forEach { group ->
+            item(key = "header-${group.provider.id}") {
+                ProviderSectionHeader(
+                    group = group,
+                    isSelected = group.provider.id.equals(selectedProviderId, ignoreCase = true),
+                    onClick = { onSelectProvider(group.provider.id) },
+                )
+            }
+
+            items(
+                items = group.agents,
+                key = { it.id },
+            ) { agent ->
+                AgentItem(
+                    agent = agent,
+                    isSelected = selectedAgentId == agent.id,
+                    onAgent = onAgent,
+                )
+            }
+
+            item(key = "spacer-${group.provider.id}") {
+                Spacer(modifier = Modifier.height(8.dp))
+            }
+        }
+    }
+}
+
+@Composable
+private fun ProviderSectionHeader(
+    group: ProviderGroup,
+    isSelected: Boolean,
+    onClick: () -> Unit,
+) {
+    Text(
+        text = "${group.provider.displayName} (${group.agents.size})",
+        style = MaterialTheme.typography.labelLarge,
+        fontWeight = FontWeight.SemiBold,
+        color = if (isSelected) {
+            MaterialTheme.colorScheme.primary
+        } else {
+            MaterialTheme.colorScheme.onSurfaceVariant
+        },
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(horizontal = 12.dp, vertical = 8.dp),
+    )
 }
 
 @Composable

@@ -33,21 +33,13 @@ data class DrawerActions(
     val onAgent: (AgentDto) -> Unit,
     val onHome: () -> Unit,
     val onNewAgent: () -> Unit,
+    val onSelectProvider: (String) -> Unit,
+    val onToggleGrouping: () -> Unit,
 )
 
 data class InputActions(
     val onInputChange: (String) -> Unit,
     val onSendMessage: () -> Unit,
-    val onSelectModel: (String) -> Unit,
-    val onSearchModel: (String) -> Unit,
-)
-
-data class HeaderActions(
-    val onSelectRepo: (String) -> Unit,
-    val onSearchRepo: (String) -> Unit,
-    val onSelectBranch: (String) -> Unit,
-    val onSearchBranch: (String) -> Unit,
-    val onChangeTargetBranch: (String) -> Unit,
 )
 
 @Composable
@@ -72,23 +64,29 @@ fun ChatRoute(
             onAgent = viewModel::onAgent,
             onHome = viewModel::onHome,
             onNewAgent = viewModel::onNewAgent,
+            onSelectProvider = viewModel::onSelectProvider,
+            onToggleGrouping = viewModel::onToggleGrouping,
         )
     }
     val inputActions = remember(viewModel) {
         InputActions(
             onInputChange = viewModel::onInputChange,
             onSendMessage = viewModel::onSendMessage,
-            onSelectModel = viewModel::onSelectModel,
-            onSearchModel = viewModel::onSearchModel,
         )
     }
-    val headerActions = remember(viewModel) {
-        HeaderActions(
+    val statusLineActions = remember(viewModel) {
+        StatusLineActions(
             onSelectRepo = viewModel::onSelectRepo,
             onSearchRepo = viewModel::onSearchRepo,
+            onExpandRepo = viewModel::onExpandRepo,
             onSelectBranch = viewModel::onSelectBranch,
             onSearchBranch = viewModel::onSearchBranch,
+            onExpandBranch = viewModel::onExpandBranch,
             onChangeTargetBranch = viewModel::onChangeTargetBranch,
+            onSelectProvider = viewModel::onSelectProviderByDisplayName,
+            onSelectModel = viewModel::onSelectModel,
+            onSearchModel = viewModel::onSearchModel,
+            onSendMessage = viewModel::onSendMessage,
         )
     }
 
@@ -96,7 +94,7 @@ fun ChatRoute(
         state = state,
         drawerActions = drawerActions,
         inputActions = inputActions,
-        headerActions = headerActions,
+        statusLineActions = statusLineActions,
     )
 }
 
@@ -115,7 +113,7 @@ fun ChatScreen(
     state: ChatUiState,
     drawerActions: DrawerActions,
     inputActions: InputActions,
-    headerActions: HeaderActions,
+    statusLineActions: StatusLineActions,
     modifier: Modifier = Modifier,
 ) {
     var isExpanded by remember { mutableStateOf(true) }
@@ -160,13 +158,20 @@ fun ChatScreen(
                         AnimatedVisibility(visible = state.message.status.isActive) {
                             LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
                         }
-                        InputHeader(
-                            state = state.input,
-                            actions = headerActions,
-                        )
                         InputScreen(
                             state = state.input,
                             actions = inputActions,
+                        )
+                        StatusLine(
+                            state = state.input,
+                            actions = statusLineActions,
+                            selectedProvider = state.drawer.selectedProvider.displayName,
+                            providers = state.drawer.selectableProviderNames,
+                            isChatStarted = state.isChatStarted,
+                            isLoading = state.message.isLoading ||
+                                state.message.status.isActive ||
+                                state.input.isPending ||
+                                !state.input.isEnabled,
                         )
                     }
                 }

@@ -195,15 +195,16 @@
   <div class="method-summary"></div>
   <h4><a href="#Agents">Agents</a></h4>
   <ul>
+  <li><a href="#agentsClearGet"><code><span class="http-method">get</span> /agents/clear</code></a></li>
   <li><a href="#agentsCreatePost"><code><span class="http-method">post</span> /agents/create</code></a></li>
   <li><a href="#agentsIdGet"><code><span class="http-method">get</span> /agents/{id}</code></a></li>
   <li><a href="#agentsListGet"><code><span class="http-method">get</span> /agents/list</code></a></li>
+  <li><a href="#agentsLoginGet"><code><span class="http-method">get</span> /agents/login</code></a></li>
+  <li><a href="#agentsLogoutGet"><code><span class="http-method">get</span> /agents/logout</code></a></li>
+  <li><a href="#agentsMcpGet"><code><span class="http-method">get</span> /agents/mcp</code></a></li>
+  <li><a href="#agentsModelsGet"><code><span class="http-method">get</span> /agents/models</code></a></li>
   <li><a href="#agentsResumePost"><code><span class="http-method">post</span> /agents/resume</code></a></li>
-  </ul>
-  <h4><a href="#Auth">Auth</a></h4>
-  <ul>
-  <li><a href="#authLoginGet"><code><span class="http-method">get</span> /auth/login</code></a></li>
-  <li><a href="#authMeGet"><code><span class="http-method">get</span> /auth/me</code></a></li>
+  <li><a href="#agentsStatusGet"><code><span class="http-method">get</span> /agents/status</code></a></li>
   </ul>
   <h4><a href="#Default">Default</a></h4>
   <ul>
@@ -212,13 +213,47 @@
   <li><a href="#redocGet"><code><span class="http-method">get</span> /redoc</code></a></li>
   <li><a href="#redocIndexHtmlGet"><code><span class="http-method">get</span> /redoc/index.html</code></a></li>
   <li><a href="#rootGet"><code><span class="http-method">get</span> /</code></a></li>
+  </ul>
+  <h4><a href="#Github">Github</a></h4>
+  <ul>
+  <li><a href="#githubBranchPost"><code><span class="http-method">post</span> /github/branch</code></a></li>
+  <li><a href="#githubLoginGet"><code><span class="http-method">get</span> /github/login</code></a></li>
+  <li><a href="#githubLogoutGet"><code><span class="http-method">get</span> /github/logout</code></a></li>
+  <li><a href="#githubRepoGet"><code><span class="http-method">get</span> /github/repo</code></a></li>
+  <li><a href="#githubRepoSearchGet"><code><span class="http-method">get</span> /github/repo/search</code></a></li>
+  <li><a href="#githubStatusGet"><code><span class="http-method">get</span> /github/status</code></a></li>
+  <li><a href="#githubTokenGet"><code><span class="http-method">get</span> /github/token</code></a></li>
+  </ul>
+  <h4><a href="#Shell">Shell</a></h4>
+  <ul>
   <li><a href="#shellCreatePost"><code><span class="http-method">post</span> /shell/create</code></a></li>
-  <li><a href="#shellIdDelete"><code><span class="http-method">delete</span> /shell/{id}</code></a></li>
-  <li><a href="#shellIdGet"><code><span class="http-method">get</span> /shell/{id}</code></a></li>
-  <li><a href="#shellListGet"><code><span class="http-method">get</span> /shell/list</code></a></li>
   </ul>
 
   <h1><a name="Agents">Agents</a></h1>
+  <div class="method"><a name="agentsClearGet"></a>
+    <div class="method-path">
+    <a class="up" href="#__Methods">Up</a>
+    <pre class="get"><code class="huge"><span class="http-method">get</span> /agents/clear</code></pre></div>
+    <div class="method-summary"> (<span class="nickname">agentsClearGet</span>)</div>
+    <div class="method-notes"></div>
+
+
+
+
+
+
+
+
+    <!--Todo: process Response Object and its headers, schema, examples -->
+
+
+
+    <h3 class="field-label">Responses</h3>
+    <h4 class="field-label">200</h4>
+    
+        <a href="#"></a>
+  </div> <!-- method -->
+  <hr/>
   <div class="method"><a name="agentsCreatePost"></a>
     <div class="method-path">
     <a class="up" href="#__Methods">Up</a>
@@ -235,7 +270,7 @@
 
     <h3 class="field-label">Request body</h3>
     <div class="field-items">
-      <div class="param">body <a href="#AgentRequest">AgentRequest</a> (optional)</div>
+      <div class="param">body <a href="#CreateAgentRequest">CreateAgentRequest</a> (optional)</div>
       
             <div class="param-desc"><span class="param-type">Body Parameter</span> &mdash;  </div>
                 </div>  <!-- field-items -->
@@ -243,12 +278,26 @@
 
 
 
+    <h3 class="field-label">Return type</h3>
+    <div class="return-type">
+      <a href="#AgentDto">AgentDto</a>
+      
+    </div>
 
     <!--Todo: process Response Object and its headers, schema, examples -->
 
     <h3 class="field-label">Example data</h3>
     <div class="example-data-content-type">Content-Type: application/json</div>
-    <pre class="example"><code>""</code></pre>
+    <pre class="example"><code>{
+  "ref" : "",
+  "lastModel" : "",
+  "provider" : "",
+  "branchName" : "",
+  "id" : "",
+  "title" : "",
+  "repository" : "",
+  "status" : ""
+}</code></pre>
 
     <h3 class="field-label">Produces</h3>
     This API call produces the following media types according to the <span class="header">Accept</span> request header;
@@ -258,9 +307,9 @@
     </ul>
 
     <h3 class="field-label">Responses</h3>
-    <h4 class="field-label">200</h4>
+    <h4 class="field-label">202</h4>
     
-        <a href="#"></a>
+        <a href="#AgentDto">AgentDto</a>
   </div> <!-- method -->
   <hr/>
   <div class="method"><a name="agentsIdGet"></a>
@@ -281,6 +330,50 @@
 
 
 
+    <h3 class="field-label">Return type</h3>
+    <div class="return-type">
+      <a href="#AgentContentDto">AgentContentDto</a>
+      
+    </div>
+
+    <!--Todo: process Response Object and its headers, schema, examples -->
+
+    <h3 class="field-label">Example data</h3>
+    <div class="example-data-content-type">Content-Type: application/json</div>
+    <pre class="example"><code>{
+  "chatId" : "",
+  "messages" : "",
+  "repository" : "",
+  "branch" : "",
+  "status" : ""
+}</code></pre>
+
+    <h3 class="field-label">Produces</h3>
+    This API call produces the following media types according to the <span class="header">Accept</span> request header;
+    the media type will be conveyed by the <span class="header">Content-Type</span> response header.
+    <ul>
+      <li><code>application/json</code></li>
+    </ul>
+
+    <h3 class="field-label">Responses</h3>
+    <h4 class="field-label">200</h4>
+    
+        <a href="#AgentContentDto">AgentContentDto</a>
+  </div> <!-- method -->
+  <hr/>
+  <div class="method"><a name="agentsListGet"></a>
+    <div class="method-path">
+    <a class="up" href="#__Methods">Up</a>
+    <pre class="get"><code class="huge"><span class="http-method">get</span> /agents/list</code></pre></div>
+    <div class="method-summary"> (<span class="nickname">agentsListGet</span>)</div>
+    <div class="method-notes"></div>
+
+
+
+
+
+
+
 
     <!--Todo: process Response Object and its headers, schema, examples -->
 
@@ -301,17 +394,166 @@
         <a href="#"></a>
   </div> <!-- method -->
   <hr/>
-  <div class="method"><a name="agentsListGet"></a>
+  <div class="method"><a name="agentsLoginGet"></a>
     <div class="method-path">
     <a class="up" href="#__Methods">Up</a>
-    <pre class="get"><code class="huge"><span class="http-method">get</span> /agents/list</code></pre></div>
-    <div class="method-summary"> (<span class="nickname">agentsListGet</span>)</div>
+    <pre class="get"><code class="huge"><span class="http-method">get</span> /agents/login</code></pre></div>
+    <div class="method-summary"> (<span class="nickname">agentsLoginGet</span>)</div>
     <div class="method-notes"></div>
 
 
 
 
 
+    <h3 class="field-label">Query parameters</h3>
+    <div class="field-items">
+      <div class="param">provider (optional)</div>
+      
+            <div class="param-desc"><span class="param-type">Query Parameter</span> &mdash;  </div>    </div>  <!-- field-items -->
+
+
+    <h3 class="field-label">Return type</h3>
+    <div class="return-type">
+      <a href="#ShellResult">ShellResult</a>
+      
+    </div>
+
+    <!--Todo: process Response Object and its headers, schema, examples -->
+
+    <h3 class="field-label">Example data</h3>
+    <div class="example-data-content-type">Content-Type: application/json</div>
+    <pre class="example"><code>{
+  "output" : "",
+  "isTimeout" : "",
+  "exitCode" : "",
+  "error" : ""
+}</code></pre>
+
+    <h3 class="field-label">Produces</h3>
+    This API call produces the following media types according to the <span class="header">Accept</span> request header;
+    the media type will be conveyed by the <span class="header">Content-Type</span> response header.
+    <ul>
+      <li><code>application/json</code></li>
+    </ul>
+
+    <h3 class="field-label">Responses</h3>
+    <h4 class="field-label">200</h4>
+    
+        <a href="#ShellResult">ShellResult</a>
+  </div> <!-- method -->
+  <hr/>
+  <div class="method"><a name="agentsLogoutGet"></a>
+    <div class="method-path">
+    <a class="up" href="#__Methods">Up</a>
+    <pre class="get"><code class="huge"><span class="http-method">get</span> /agents/logout</code></pre></div>
+    <div class="method-summary"> (<span class="nickname">agentsLogoutGet</span>)</div>
+    <div class="method-notes"></div>
+
+
+
+
+
+    <h3 class="field-label">Query parameters</h3>
+    <div class="field-items">
+      <div class="param">provider (optional)</div>
+      
+            <div class="param-desc"><span class="param-type">Query Parameter</span> &mdash;  </div>    </div>  <!-- field-items -->
+
+
+    <h3 class="field-label">Return type</h3>
+    <div class="return-type">
+      <a href="#ShellResult">ShellResult</a>
+      
+    </div>
+
+    <!--Todo: process Response Object and its headers, schema, examples -->
+
+    <h3 class="field-label">Example data</h3>
+    <div class="example-data-content-type">Content-Type: application/json</div>
+    <pre class="example"><code>{
+  "output" : "",
+  "isTimeout" : "",
+  "exitCode" : "",
+  "error" : ""
+}</code></pre>
+
+    <h3 class="field-label">Produces</h3>
+    This API call produces the following media types according to the <span class="header">Accept</span> request header;
+    the media type will be conveyed by the <span class="header">Content-Type</span> response header.
+    <ul>
+      <li><code>application/json</code></li>
+    </ul>
+
+    <h3 class="field-label">Responses</h3>
+    <h4 class="field-label">200</h4>
+    
+        <a href="#ShellResult">ShellResult</a>
+  </div> <!-- method -->
+  <hr/>
+  <div class="method"><a name="agentsMcpGet"></a>
+    <div class="method-path">
+    <a class="up" href="#__Methods">Up</a>
+    <pre class="get"><code class="huge"><span class="http-method">get</span> /agents/mcp</code></pre></div>
+    <div class="method-summary"> (<span class="nickname">agentsMcpGet</span>)</div>
+    <div class="method-notes"></div>
+
+
+
+
+
+    <h3 class="field-label">Query parameters</h3>
+    <div class="field-items">
+      <div class="param">provider (optional)</div>
+      
+            <div class="param-desc"><span class="param-type">Query Parameter</span> &mdash;  </div>    </div>  <!-- field-items -->
+
+
+    <h3 class="field-label">Return type</h3>
+    <div class="return-type">
+      <a href="#ShellResult">ShellResult</a>
+      
+    </div>
+
+    <!--Todo: process Response Object and its headers, schema, examples -->
+
+    <h3 class="field-label">Example data</h3>
+    <div class="example-data-content-type">Content-Type: application/json</div>
+    <pre class="example"><code>{
+  "output" : "",
+  "isTimeout" : "",
+  "exitCode" : "",
+  "error" : ""
+}</code></pre>
+
+    <h3 class="field-label">Produces</h3>
+    This API call produces the following media types according to the <span class="header">Accept</span> request header;
+    the media type will be conveyed by the <span class="header">Content-Type</span> response header.
+    <ul>
+      <li><code>application/json</code></li>
+    </ul>
+
+    <h3 class="field-label">Responses</h3>
+    <h4 class="field-label">200</h4>
+    
+        <a href="#ShellResult">ShellResult</a>
+  </div> <!-- method -->
+  <hr/>
+  <div class="method"><a name="agentsModelsGet"></a>
+    <div class="method-path">
+    <a class="up" href="#__Methods">Up</a>
+    <pre class="get"><code class="huge"><span class="http-method">get</span> /agents/models</code></pre></div>
+    <div class="method-summary"> (<span class="nickname">agentsModelsGet</span>)</div>
+    <div class="method-notes"></div>
+
+
+
+
+
+    <h3 class="field-label">Query parameters</h3>
+    <div class="field-items">
+      <div class="param">provider (optional)</div>
+      
+            <div class="param-desc"><span class="param-type">Query Parameter</span> &mdash;  </div>    </div>  <!-- field-items -->
 
 
 
@@ -350,7 +592,7 @@
 
     <h3 class="field-label">Request body</h3>
     <div class="field-items">
-      <div class="param">body <a href="#AgentResumeRequest">AgentResumeRequest</a> (optional)</div>
+      <div class="param">body <a href="#ResumeAgentRequest">ResumeAgentRequest</a> (optional)</div>
       
             <div class="param-desc"><span class="param-type">Body Parameter</span> &mdash;  </div>
                 </div>  <!-- field-items -->
@@ -358,12 +600,26 @@
 
 
 
+    <h3 class="field-label">Return type</h3>
+    <div class="return-type">
+      <a href="#AgentDto">AgentDto</a>
+      
+    </div>
 
     <!--Todo: process Response Object and its headers, schema, examples -->
 
     <h3 class="field-label">Example data</h3>
     <div class="example-data-content-type">Content-Type: application/json</div>
-    <pre class="example"><code>""</code></pre>
+    <pre class="example"><code>{
+  "ref" : "",
+  "lastModel" : "",
+  "provider" : "",
+  "branchName" : "",
+  "id" : "",
+  "title" : "",
+  "repository" : "",
+  "status" : ""
+}</code></pre>
 
     <h3 class="field-label">Produces</h3>
     This API call produces the following media types according to the <span class="header">Accept</span> request header;
@@ -375,50 +631,55 @@
     <h3 class="field-label">Responses</h3>
     <h4 class="field-label">200</h4>
     
-        <a href="#"></a>
+        <a href="#AgentDto">AgentDto</a>
   </div> <!-- method -->
   <hr/>
-  <h1><a name="Auth">Auth</a></h1>
-  <div class="method"><a name="authLoginGet"></a>
+  <div class="method"><a name="agentsStatusGet"></a>
     <div class="method-path">
     <a class="up" href="#__Methods">Up</a>
-    <pre class="get"><code class="huge"><span class="http-method">get</span> /auth/login</code></pre></div>
-    <div class="method-summary"> (<span class="nickname">authLoginGet</span>)</div>
+    <pre class="get"><code class="huge"><span class="http-method">get</span> /agents/status</code></pre></div>
+    <div class="method-summary"> (<span class="nickname">agentsStatusGet</span>)</div>
     <div class="method-notes"></div>
 
 
 
 
 
+    <h3 class="field-label">Query parameters</h3>
+    <div class="field-items">
+      <div class="param">provider (optional)</div>
+      
+            <div class="param-desc"><span class="param-type">Query Parameter</span> &mdash;  </div>    </div>  <!-- field-items -->
 
 
-
-    <!--Todo: process Response Object and its headers, schema, examples -->
-
-
-
-    <h3 class="field-label">Responses</h3>
-  </div> <!-- method -->
-  <hr/>
-  <div class="method"><a name="authMeGet"></a>
-    <div class="method-path">
-    <a class="up" href="#__Methods">Up</a>
-    <pre class="get"><code class="huge"><span class="http-method">get</span> /auth/me</code></pre></div>
-    <div class="method-summary"> (<span class="nickname">authMeGet</span>)</div>
-    <div class="method-notes"></div>
-
-
-
-
-
-
-
+    <h3 class="field-label">Return type</h3>
+    <div class="return-type">
+      <a href="#ShellResult">ShellResult</a>
+      
+    </div>
 
     <!--Todo: process Response Object and its headers, schema, examples -->
 
+    <h3 class="field-label">Example data</h3>
+    <div class="example-data-content-type">Content-Type: application/json</div>
+    <pre class="example"><code>{
+  "output" : "",
+  "isTimeout" : "",
+  "exitCode" : "",
+  "error" : ""
+}</code></pre>
 
+    <h3 class="field-label">Produces</h3>
+    This API call produces the following media types according to the <span class="header">Accept</span> request header;
+    the media type will be conveyed by the <span class="header">Content-Type</span> response header.
+    <ul>
+      <li><code>application/json</code></li>
+    </ul>
 
     <h3 class="field-label">Responses</h3>
+    <h4 class="field-label">200</h4>
+    
+        <a href="#ShellResult">ShellResult</a>
   </div> <!-- method -->
   <hr/>
   <h1><a name="Default">Default</a></h1>
@@ -535,6 +796,265 @@
         <a href="#"></a>
   </div> <!-- method -->
   <hr/>
+  <h1><a name="Github">Github</a></h1>
+  <div class="method"><a name="githubBranchPost"></a>
+    <div class="method-path">
+    <a class="up" href="#__Methods">Up</a>
+    <pre class="post"><code class="huge"><span class="http-method">post</span> /github/branch</code></pre></div>
+    <div class="method-summary"> (<span class="nickname">githubBranchPost</span>)</div>
+    <div class="method-notes"></div>
+
+
+    <h3 class="field-label">Consumes</h3>
+    This API call consumes the following media types via the <span class="header">Content-Type</span> request header:
+    <ul>
+      <li><code>application/json</code></li>
+    </ul>
+
+    <h3 class="field-label">Request body</h3>
+    <div class="field-items">
+      <div class="param">body <a href="#GithubBranchRequest">GithubBranchRequest</a> (optional)</div>
+      
+            <div class="param-desc"><span class="param-type">Body Parameter</span> &mdash;  </div>
+                </div>  <!-- field-items -->
+
+
+
+
+
+    <!--Todo: process Response Object and its headers, schema, examples -->
+
+    <h3 class="field-label">Example data</h3>
+    <div class="example-data-content-type">Content-Type: application/json</div>
+    <pre class="example"><code>""</code></pre>
+
+    <h3 class="field-label">Produces</h3>
+    This API call produces the following media types according to the <span class="header">Accept</span> request header;
+    the media type will be conveyed by the <span class="header">Content-Type</span> response header.
+    <ul>
+      <li><code>application/json</code></li>
+    </ul>
+
+    <h3 class="field-label">Responses</h3>
+    <h4 class="field-label">200</h4>
+    
+        <a href="#"></a>
+  </div> <!-- method -->
+  <hr/>
+  <div class="method"><a name="githubLoginGet"></a>
+    <div class="method-path">
+    <a class="up" href="#__Methods">Up</a>
+    <pre class="get"><code class="huge"><span class="http-method">get</span> /github/login</code></pre></div>
+    <div class="method-summary"> (<span class="nickname">githubLoginGet</span>)</div>
+    <div class="method-notes"></div>
+
+
+
+
+
+
+
+    <h3 class="field-label">Return type</h3>
+    <div class="return-type">
+      <a href="#GithubLogin">GithubLogin</a>
+      
+    </div>
+
+    <!--Todo: process Response Object and its headers, schema, examples -->
+
+    <h3 class="field-label">Example data</h3>
+    <div class="example-data-content-type">Content-Type: application/json</div>
+    <pre class="example"><code>{
+  "openUrl" : "",
+  "code" : ""
+}</code></pre>
+
+    <h3 class="field-label">Produces</h3>
+    This API call produces the following media types according to the <span class="header">Accept</span> request header;
+    the media type will be conveyed by the <span class="header">Content-Type</span> response header.
+    <ul>
+      <li><code>application/json</code></li>
+    </ul>
+
+    <h3 class="field-label">Responses</h3>
+    <h4 class="field-label">200</h4>
+    
+        <a href="#GithubLogin">GithubLogin</a>
+  </div> <!-- method -->
+  <hr/>
+  <div class="method"><a name="githubLogoutGet"></a>
+    <div class="method-path">
+    <a class="up" href="#__Methods">Up</a>
+    <pre class="get"><code class="huge"><span class="http-method">get</span> /github/logout</code></pre></div>
+    <div class="method-summary"> (<span class="nickname">githubLogoutGet</span>)</div>
+    <div class="method-notes"></div>
+
+
+
+
+
+
+
+
+    <!--Todo: process Response Object and its headers, schema, examples -->
+
+    <h3 class="field-label">Example data</h3>
+    <div class="example-data-content-type">Content-Type: application/json</div>
+    <pre class="example"><code>""</code></pre>
+
+    <h3 class="field-label">Produces</h3>
+    This API call produces the following media types according to the <span class="header">Accept</span> request header;
+    the media type will be conveyed by the <span class="header">Content-Type</span> response header.
+    <ul>
+      <li><code>application/json</code></li>
+    </ul>
+
+    <h3 class="field-label">Responses</h3>
+    <h4 class="field-label">200</h4>
+    
+        <a href="#"></a>
+  </div> <!-- method -->
+  <hr/>
+  <div class="method"><a name="githubRepoGet"></a>
+    <div class="method-path">
+    <a class="up" href="#__Methods">Up</a>
+    <pre class="get"><code class="huge"><span class="http-method">get</span> /github/repo</code></pre></div>
+    <div class="method-summary"> (<span class="nickname">githubRepoGet</span>)</div>
+    <div class="method-notes"></div>
+
+
+
+
+
+
+
+
+    <!--Todo: process Response Object and its headers, schema, examples -->
+
+    <h3 class="field-label">Example data</h3>
+    <div class="example-data-content-type">Content-Type: application/json</div>
+    <pre class="example"><code>""</code></pre>
+
+    <h3 class="field-label">Produces</h3>
+    This API call produces the following media types according to the <span class="header">Accept</span> request header;
+    the media type will be conveyed by the <span class="header">Content-Type</span> response header.
+    <ul>
+      <li><code>application/json</code></li>
+    </ul>
+
+    <h3 class="field-label">Responses</h3>
+    <h4 class="field-label">200</h4>
+    
+        <a href="#"></a>
+  </div> <!-- method -->
+  <hr/>
+  <div class="method"><a name="githubRepoSearchGet"></a>
+    <div class="method-path">
+    <a class="up" href="#__Methods">Up</a>
+    <pre class="get"><code class="huge"><span class="http-method">get</span> /github/repo/search</code></pre></div>
+    <div class="method-summary"> (<span class="nickname">githubRepoSearchGet</span>)</div>
+    <div class="method-notes"></div>
+
+
+
+
+
+    <h3 class="field-label">Query parameters</h3>
+    <div class="field-items">
+      <div class="param">q (optional)</div>
+      
+            <div class="param-desc"><span class="param-type">Query Parameter</span> &mdash;  </div>      <div class="param">limit (optional)</div>
+      
+            <div class="param-desc"><span class="param-type">Query Parameter</span> &mdash;  </div>    </div>  <!-- field-items -->
+
+
+
+    <!--Todo: process Response Object and its headers, schema, examples -->
+
+    <h3 class="field-label">Example data</h3>
+    <div class="example-data-content-type">Content-Type: application/json</div>
+    <pre class="example"><code>""</code></pre>
+
+    <h3 class="field-label">Produces</h3>
+    This API call produces the following media types according to the <span class="header">Accept</span> request header;
+    the media type will be conveyed by the <span class="header">Content-Type</span> response header.
+    <ul>
+      <li><code>application/json</code></li>
+    </ul>
+
+    <h3 class="field-label">Responses</h3>
+    <h4 class="field-label">200</h4>
+    
+        <a href="#"></a>
+  </div> <!-- method -->
+  <hr/>
+  <div class="method"><a name="githubStatusGet"></a>
+    <div class="method-path">
+    <a class="up" href="#__Methods">Up</a>
+    <pre class="get"><code class="huge"><span class="http-method">get</span> /github/status</code></pre></div>
+    <div class="method-summary"> (<span class="nickname">githubStatusGet</span>)</div>
+    <div class="method-notes"></div>
+
+
+
+
+
+
+
+
+    <!--Todo: process Response Object and its headers, schema, examples -->
+
+    <h3 class="field-label">Example data</h3>
+    <div class="example-data-content-type">Content-Type: application/json</div>
+    <pre class="example"><code>""</code></pre>
+
+    <h3 class="field-label">Produces</h3>
+    This API call produces the following media types according to the <span class="header">Accept</span> request header;
+    the media type will be conveyed by the <span class="header">Content-Type</span> response header.
+    <ul>
+      <li><code>application/json</code></li>
+    </ul>
+
+    <h3 class="field-label">Responses</h3>
+    <h4 class="field-label">200</h4>
+    
+        <a href="#"></a>
+  </div> <!-- method -->
+  <hr/>
+  <div class="method"><a name="githubTokenGet"></a>
+    <div class="method-path">
+    <a class="up" href="#__Methods">Up</a>
+    <pre class="get"><code class="huge"><span class="http-method">get</span> /github/token</code></pre></div>
+    <div class="method-summary"> (<span class="nickname">githubTokenGet</span>)</div>
+    <div class="method-notes"></div>
+
+
+
+
+
+
+
+
+    <!--Todo: process Response Object and its headers, schema, examples -->
+
+    <h3 class="field-label">Example data</h3>
+    <div class="example-data-content-type">Content-Type: application/json</div>
+    <pre class="example"><code>""</code></pre>
+
+    <h3 class="field-label">Produces</h3>
+    This API call produces the following media types according to the <span class="header">Accept</span> request header;
+    the media type will be conveyed by the <span class="header">Content-Type</span> response header.
+    <ul>
+      <li><code>application/json</code></li>
+    </ul>
+
+    <h3 class="field-label">Responses</h3>
+    <h4 class="field-label">200</h4>
+    
+        <a href="#"></a>
+  </div> <!-- method -->
+  <hr/>
+  <h1><a name="Shell">Shell</a></h1>
   <div class="method"><a name="shellCreatePost"></a>
     <div class="method-path">
     <a class="up" href="#__Methods">Up</a>
@@ -543,7 +1063,18 @@
     <div class="method-notes"></div>
 
 
+    <h3 class="field-label">Consumes</h3>
+    This API call consumes the following media types via the <span class="header">Content-Type</span> request header:
+    <ul>
+      <li><code>application/json</code></li>
+    </ul>
 
+    <h3 class="field-label">Request body</h3>
+    <div class="field-items">
+      <div class="param">body <a href="#RunShellRequest">RunShellRequest</a> (optional)</div>
+      
+            <div class="param-desc"><span class="param-type">Body Parameter</span> &mdash;  </div>
+                </div>  <!-- field-items -->
 
 
 
@@ -578,111 +1109,104 @@
         <a href="#ShellResult">ShellResult</a>
   </div> <!-- method -->
   <hr/>
-  <div class="method"><a name="shellIdDelete"></a>
-    <div class="method-path">
-    <a class="up" href="#__Methods">Up</a>
-    <pre class="delete"><code class="huge"><span class="http-method">delete</span> /shell/{id}</code></pre></div>
-    <div class="method-summary"> (<span class="nickname">shellIdDelete</span>)</div>
-    <div class="method-notes"></div>
-
-    <h3 class="field-label">Path parameters</h3>
-    <div class="field-items">
-      <div class="param">id (required)</div>
-      
-            <div class="param-desc"><span class="param-type">Path Parameter</span> &mdash;  </div>    </div>  <!-- field-items -->
-
-
-
-
-
-
-
-    <!--Todo: process Response Object and its headers, schema, examples -->
-
-
-
-    <h3 class="field-label">Responses</h3>
-  </div> <!-- method -->
-  <hr/>
-  <div class="method"><a name="shellIdGet"></a>
-    <div class="method-path">
-    <a class="up" href="#__Methods">Up</a>
-    <pre class="get"><code class="huge"><span class="http-method">get</span> /shell/{id}</code></pre></div>
-    <div class="method-summary"> (<span class="nickname">shellIdGet</span>)</div>
-    <div class="method-notes"></div>
-
-    <h3 class="field-label">Path parameters</h3>
-    <div class="field-items">
-      <div class="param">id (required)</div>
-      
-            <div class="param-desc"><span class="param-type">Path Parameter</span> &mdash;  </div>    </div>  <!-- field-items -->
-
-
-
-
-
-
-
-    <!--Todo: process Response Object and its headers, schema, examples -->
-
-
-
-    <h3 class="field-label">Responses</h3>
-  </div> <!-- method -->
-  <hr/>
-  <div class="method"><a name="shellListGet"></a>
-    <div class="method-path">
-    <a class="up" href="#__Methods">Up</a>
-    <pre class="get"><code class="huge"><span class="http-method">get</span> /shell/list</code></pre></div>
-    <div class="method-summary"> (<span class="nickname">shellListGet</span>)</div>
-    <div class="method-notes"></div>
-
-
-
-
-
-
-
-
-    <!--Todo: process Response Object and its headers, schema, examples -->
-
-
-
-    <h3 class="field-label">Responses</h3>
-  </div> <!-- method -->
-  <hr/>
 
   <h2><a name="__Models">Models</a></h2>
   [ Jump to <a href="#__Methods">Methods</a> ]
 
   <h3>Table of Contents</h3>
   <ol>
-    <li><a href="#AgentRequest"><code>AgentRequest</code> - org.enciyo.agentspawn.api.AgentRequest</a></li>
-    <li><a href="#AgentResumeRequest"><code>AgentResumeRequest</code> - org.enciyo.agentspawn.api.AgentResumeRequest</a></li>
-    <li><a href="#ShellResult"><code>ShellResult</code> - org.enciyo.agentspawn.ShellResult</a></li>
+    <li><a href="#AgentContentDto"><code>AgentContentDto</code> - org.enciyo.agentspawn.api.AgentContentDto</a></li>
+    <li><a href="#AgentDto"><code>AgentDto</code> - org.enciyo.agentspawn.api.AgentDto</a></li>
+    <li><a href="#CreateAgentRequest"><code>CreateAgentRequest</code> - org.enciyo.agentspawn.api.CreateAgentRequest</a></li>
+    <li><a href="#GithubBranchRequest"><code>GithubBranchRequest</code> - org.enciyo.agentspawn.api.GithubBranchRequest</a></li>
+    <li><a href="#GithubLogin"><code>GithubLogin</code> - org.enciyo.agentspawn.api.GithubLogin</a></li>
+    <li><a href="#GithubStatus"><code>GithubStatus</code> - org.enciyo.agentspawn.api.GithubStatus</a></li>
+    <li><a href="#ResumeAgentRequest"><code>ResumeAgentRequest</code> - org.enciyo.agentspawn.api.ResumeAgentRequest</a></li>
+    <li><a href="#RunShellRequest"><code>RunShellRequest</code> - org.enciyo.agentspawn.api.RunShellRequest</a></li>
+    <li><a href="#ShellResult"><code>ShellResult</code> - org.enciyo.agentspawn.api.ShellResult</a></li>
   </ol>
 
   <div class="model">
-    <h3><a name="AgentRequest"><code>AgentRequest</code> - org.enciyo.agentspawn.api.AgentRequest</a> <a class="up" href="#__Models">Up</a></h3>
+    <h3><a name="AgentContentDto"><code>AgentContentDto</code> - org.enciyo.agentspawn.api.AgentContentDto</a> <a class="up" href="#__Models">Up</a></h3>
     
     <div class="field-items">
-      <div class="param">text </div><div class="param-desc"><span class="param-type"><a href="#"></a></span>  </div>
+      <div class="param">chatId </div><div class="param-desc"><span class="param-type"><a href="#"></a></span>  </div>
+<div class="param">messages </div><div class="param-desc"><span class="param-type"><a href="#"></a></span>  </div>
+<div class="param">status </div><div class="param-desc"><span class="param-type"><a href="#"></a></span>  </div>
+<div class="param">repository </div><div class="param-desc"><span class="param-type"><a href="#"></a></span>  </div>
+<div class="param">branch </div><div class="param-desc"><span class="param-type"><a href="#"></a></span>  </div>
+    </div>  <!-- field-items -->
+  </div>
+  <div class="model">
+    <h3><a name="AgentDto"><code>AgentDto</code> - org.enciyo.agentspawn.api.AgentDto</a> <a class="up" href="#__Models">Up</a></h3>
+    
+    <div class="field-items">
+      <div class="param">id </div><div class="param-desc"><span class="param-type"><a href="#"></a></span>  </div>
+<div class="param">status </div><div class="param-desc"><span class="param-type"><a href="#"></a></span>  </div>
+<div class="param">title </div><div class="param-desc"><span class="param-type"><a href="#"></a></span>  </div>
+<div class="param">branchName </div><div class="param-desc"><span class="param-type"><a href="#"></a></span>  </div>
+<div class="param">ref </div><div class="param-desc"><span class="param-type"><a href="#"></a></span>  </div>
+<div class="param">repository </div><div class="param-desc"><span class="param-type"><a href="#"></a></span>  </div>
+<div class="param">provider </div><div class="param-desc"><span class="param-type"><a href="#"></a></span>  </div>
+<div class="param">lastModel </div><div class="param-desc"><span class="param-type"><a href="#"></a></span>  </div>
+    </div>  <!-- field-items -->
+  </div>
+  <div class="model">
+    <h3><a name="CreateAgentRequest"><code>CreateAgentRequest</code> - org.enciyo.agentspawn.api.CreateAgentRequest</a> <a class="up" href="#__Models">Up</a></h3>
+    
+    <div class="field-items">
+      <div class="param">prompt </div><div class="param-desc"><span class="param-type"><a href="#"></a></span>  </div>
 <div class="param">repository </div><div class="param-desc"><span class="param-type"><a href="#"></a></span>  </div>
 <div class="param">ref </div><div class="param-desc"><span class="param-type"><a href="#"></a></span>  </div>
 <div class="param">branchName </div><div class="param-desc"><span class="param-type"><a href="#"></a></span>  </div>
 <div class="param">provider </div><div class="param-desc"><span class="param-type"><a href="#"></a></span>  </div>
+<div class="param">model </div><div class="param-desc"><span class="param-type"><a href="#"></a></span>  </div>
     </div>  <!-- field-items -->
   </div>
   <div class="model">
-    <h3><a name="AgentResumeRequest"><code>AgentResumeRequest</code> - org.enciyo.agentspawn.api.AgentResumeRequest</a> <a class="up" href="#__Models">Up</a></h3>
+    <h3><a name="GithubBranchRequest"><code>GithubBranchRequest</code> - org.enciyo.agentspawn.api.GithubBranchRequest</a> <a class="up" href="#__Models">Up</a></h3>
     
     <div class="field-items">
-      <div class="param">text </div><div class="param-desc"><span class="param-type"><a href="#"></a></span>  </div>
+      <div class="param">repository </div><div class="param-desc"><span class="param-type"><a href="#"></a></span>  </div>
+<div class="param">query </div><div class="param-desc"><span class="param-type"><a href="#"></a></span>  </div>
+    </div>  <!-- field-items -->
+  </div>
+  <div class="model">
+    <h3><a name="GithubLogin"><code>GithubLogin</code> - org.enciyo.agentspawn.api.GithubLogin</a> <a class="up" href="#__Models">Up</a></h3>
+    
+    <div class="field-items">
+      <div class="param">code </div><div class="param-desc"><span class="param-type"><a href="#"></a></span>  </div>
+<div class="param">openUrl </div><div class="param-desc"><span class="param-type"><a href="#"></a></span>  </div>
+    </div>  <!-- field-items -->
+  </div>
+  <div class="model">
+    <h3><a name="GithubStatus"><code>GithubStatus</code> - org.enciyo.agentspawn.api.GithubStatus</a> <a class="up" href="#__Models">Up</a></h3>
+    
+    <div class="field-items">
+      <div class="param">name </div><div class="param-desc"><span class="param-type"><a href="#"></a></span>  </div>
+<div class="param">active </div><div class="param-desc"><span class="param-type"><a href="#"></a></span>  </div>
+<div class="param">scopes </div><div class="param-desc"><span class="param-type"><a href="#"></a></span>  </div>
+    </div>  <!-- field-items -->
+  </div>
+  <div class="model">
+    <h3><a name="ResumeAgentRequest"><code>ResumeAgentRequest</code> - org.enciyo.agentspawn.api.ResumeAgentRequest</a> <a class="up" href="#__Models">Up</a></h3>
+    
+    <div class="field-items">
+      <div class="param">prompt </div><div class="param-desc"><span class="param-type"><a href="#"></a></span>  </div>
+<div class="param">model </div><div class="param-desc"><span class="param-type"><a href="#"></a></span>  </div>
 <div class="param">id </div><div class="param-desc"><span class="param-type"><a href="#"></a></span>  </div>
     </div>  <!-- field-items -->
   </div>
   <div class="model">
-    <h3><a name="ShellResult"><code>ShellResult</code> - org.enciyo.agentspawn.ShellResult</a> <a class="up" href="#__Models">Up</a></h3>
+    <h3><a name="RunShellRequest"><code>RunShellRequest</code> - org.enciyo.agentspawn.api.RunShellRequest</a> <a class="up" href="#__Models">Up</a></h3>
+    
+    <div class="field-items">
+      <div class="param">command </div><div class="param-desc"><span class="param-type"><a href="#"></a></span>  </div>
+<div class="param">timeout (optional)</div><div class="param-desc"><span class="param-type"><a href="#"></a></span>  </div>
+    </div>  <!-- field-items -->
+  </div>
+  <div class="model">
+    <h3><a name="ShellResult"><code>ShellResult</code> - org.enciyo.agentspawn.api.ShellResult</a> <a class="up" href="#__Models">Up</a></h3>
     
     <div class="field-items">
       <div class="param">output </div><div class="param-desc"><span class="param-type"><a href="#"></a></span>  </div>

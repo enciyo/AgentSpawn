@@ -10,12 +10,14 @@ abstract class Cli(protected val shellRunner: ShellRunner) {
         innerProgram: Command = program,
         workingDir: String = ".",
         interruptible: Boolean = false,
+        env: Map<String, String> = emptyMap(),
     ) =
         shellRunner.runSync(
             timeoutSeconds = timeout,
             args = arrayOf(innerProgram, *args),
             workingDir = workingDir,
-            interruptible = interruptible
+            interruptible = interruptible,
+            env = env,
         )
 
 }

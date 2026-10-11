@@ -10,6 +10,7 @@ interface ShellRunner {
         timeoutSeconds: Long = -1,
         workingDir: String = "",
         interruptible: Boolean = true,
+        env: Map<String, String> = emptyMap(),
     ): Either<AppError, ShellResult>
 
     suspend fun runSyncCommand(

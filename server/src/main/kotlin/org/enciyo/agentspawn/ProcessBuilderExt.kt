@@ -16,8 +16,9 @@ suspend fun String.exec(
     timeout: Long = -1,
     interruptible: Boolean = true,
     workingDir: String = ".",
+    env: Map<String, String> = emptyMap(),
 ) = runCatching {
-    val process = startShellProcess(trim(), workingDir)
+    val process = startShellProcess(trim(), workingDir, env)
     withContext(Dispatchers.IO) {
         collectProcessOutput(process, timeout, interruptible)
     }
@@ -105,12 +106,18 @@ private suspend fun closeStreamsAndJoin(process: Process, outJob: Job, errJob: J
     joinAll(outJob, errJob)
 }
 
-private fun startShellProcess(command: String, workingDir: String = "."): Process =
-    ProcessBuilder("sh", "-c", command)
+private fun startShellProcess(
+    command: String,
+    workingDir: String = ".",
+    env: Map<String, String> = emptyMap(),
+): Process {
+    val builder = ProcessBuilder("sh", "-c", command)
         .directory(java.io.File(workingDir))
         .redirectOutput(ProcessBuilder.Redirect.PIPE)
         .redirectError(ProcessBuilder.Redirect.PIPE)
-        .start()
+    if (env.isNotEmpty()) builder.environment().putAll(env)
+    return builder.start()
+}
 
 private suspend fun streamToChannel(stream: InputStream, ch: Channel<String>) {
     try {

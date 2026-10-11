@@ -12,6 +12,7 @@ class FileCli(shellRunner: ShellRunner) : Cli(shellRunner) {
         data class List(val path: String? = null) : Command("ls $path")
         data class MakeDirectory(val path: String) : Command("mkdir -p $path")
         data class Delete(val path: String) : Command("rm -rf $path")
+        data class Read(val path: String) : Command("cat $path")
     }
 
     suspend fun list(
@@ -27,5 +28,8 @@ class FileCli(shellRunner: ShellRunner) : Cli(shellRunner) {
 
     suspend fun delete(string: String): Either<AppError, ShellResult> =
         run(FileCommand.Delete(string))
+
+    suspend fun read(string: String): Either<AppError, ShellResult> =
+        run(FileCommand.Read(string))
 
 }

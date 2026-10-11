@@ -2,6 +2,7 @@ package org.enciyo.agentspawn.ui.features.chat
 
 import org.enciyo.agentspawn.api.AgentDto
 import org.enciyo.agentspawn.api.AgentMessageDto
+import org.enciyo.agentspawn.api.AgentProvider
 import org.enciyo.agentspawn.api.AgentStatus
 
 data class ChatUiState(
@@ -13,12 +14,40 @@ data class ChatUiState(
         get() = message.messages.isNotEmpty()
 }
 
-data class DrawerState(
+data class ProviderGroup(
+    val provider: ProviderInfo,
+    val isLoggedIn: Boolean,
     val agents: List<AgentDto> = emptyList(),
+)
+
+data class DrawerState(
+    val providerGroups: List<ProviderGroup> = emptyList(),
     val selectedAgentId: String? = null,
+    val selectedProviderId: String = AgentProvider.Cursor.name,
+    val isGrouped: Boolean = true,
     val isLoading: Boolean = true,
     val errorMessage: String? = null,
-)
+) {
+    val agents: List<AgentDto>
+        get() = providerGroups.flatMap { it.agents }
+
+    val selectedProvider: ProviderInfo
+        get() = ProviderCatalog.byId(selectedProviderId)
+            ?: ProviderCatalog.byAgentProvider(AgentProvider.Cursor)
+
+    val loggedInProviders: List<ProviderInfo>
+        get() = providerGroups.filter { it.isLoggedIn }.map { it.provider }
+
+    /** New agent StatusLine için seçilebilir (login + wired) provider isimleri. */
+    val selectableProviderNames: List<String>
+        get() {
+            val loggedIn = providerGroups
+                .filter { it.isLoggedIn && it.provider.isWired }
+                .map { it.provider.displayName }
+            if (loggedIn.isNotEmpty()) return loggedIn.distinct()
+            return ProviderCatalog.all.filter { it.isWired }.map { it.displayName }
+        }
+}
 
 data class InputState(
     val text: String = "",
@@ -44,14 +73,21 @@ data class InputState(
         get() = if (searchModel.isBlank()) models else
             models.filter { it.contains(searchModel, ignoreCase = true) }
 
+    /** Repo yoksa gizle; selected veya liste varsa göster. */
     val isVisibleRepositorySelection
-        get() = repositories.isNotEmpty() || searchRepo.isNotBlank() || selectedRepository.isNotBlank()
+        get() = selectedRepository.isNotBlank() || repositories.isNotEmpty()
 
+    /** Branch yoksa gizle; selected veya liste varsa göster. */
     val isVisibleBranchSelection
-        get() = branches.isNotEmpty() || searchBranch.isNotBlank() || selectedBranch.isNotBlank()
+        get() = selectedBranch.isNotBlank() || branches.isNotEmpty()
 
-    val isVisibleTargetBranch
-        get() = branches.isNotEmpty()
+    /**
+     * Chat öncesi: branch listesi veya değer varsa göster (set edilmeli).
+     * Chat sonrası: sadece set edilmişse göster (read-only).
+     */
+    fun isVisibleTargetBranch(isChatStarted: Boolean): Boolean =
+        if (isChatStarted) targetBranch.isNotBlank()
+        else branches.isNotEmpty() || targetBranch.isNotBlank()
 }
 
 data class MessageState(

@@ -6,9 +6,11 @@ import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import io.ktor.server.routing.openapi.*
 import io.ktor.utils.io.*
+import kotlinx.serialization.json.JsonObject
 import org.enciyo.agentspawn.api.AgentProvider
 import org.enciyo.agentspawn.api.CreateAgentRequest
 import org.enciyo.agentspawn.api.ResumeAgentRequest
+import org.enciyo.agentspawn.cli.agent.provide
 import org.enciyo.agentspawn.getOrRespondError
 import org.enciyo.agentspawn.respondError
 import org.koin.ktor.ext.get
@@ -27,15 +29,20 @@ fun Route.agentRoute() = route(PATH) {
     post("resume") { resume(service) }
     get("models") { models(service) }
     get("clear") { clear(service) }
+    get("mcp") { mcp(service) }
 }.describe { tag(PATH) }
 
+private suspend fun RoutingContext.mcp(service: AgentService) {
+    val provider = requiredProvider()
+    val result = service.getMcpConfigs(provider).getOrRespondError() ?: return
+    call.respond(result)
+}
 
 private suspend fun RoutingContext.status(service: AgentService) {
     val provider = requiredProvider()
     val status = service.status(provider).getOrRespondError() ?: return
     call.respond(status)
 }
-
 
 private suspend fun RoutingContext.logout(service: AgentService) {
     val provider = requiredProvider()
@@ -89,4 +96,5 @@ private suspend fun RoutingContext.requiredId(): String? = call.parameters["id"]
     null
 }
 
-private fun RoutingContext.requiredProvider(): String = call.request.queryParameters["provider"] ?: AgentProvider.Cursor.name
+private fun RoutingContext.requiredProvider(): String =
+    call.request.queryParameters["provider"] ?: AgentProvider.Cursor.name

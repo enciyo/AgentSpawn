@@ -23,6 +23,7 @@ import kotlinx.coroutines.delay
 import org.enciyo.agentspawn.ui.design.DesignTokens
 import org.enciyo.agentspawn.ui.features.components.AppTextField
 import org.jetbrains.compose.resources.stringResource
+import kotlin.time.Duration.Companion.milliseconds
 
 @Composable
 internal fun DropdownSelector(
@@ -33,6 +34,7 @@ internal fun DropdownSelector(
     onItemSelected: (String) -> Unit,
     searchQuery: String,
     onSearch: (String) -> Unit,
+    onExpand: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     var expanded by remember { mutableStateOf(false) }
@@ -40,7 +42,8 @@ internal fun DropdownSelector(
 
     LaunchedEffect(expanded) {
         if (expanded) {
-            delay(150)
+            onExpand()
+            delay(150.milliseconds)
             focusRequester.requestFocus()
         }
     }

@@ -16,7 +16,7 @@
 *.md
 .DS_Store
 
-# Docker (recursive build önleme)
-Dockerfile*
-docker-compose*
+# Docker (recursive build önleme) — deploy/ nginx conf kopyalanır, ignore etme
+Dockerfile
+docker-compose*.yml
 .dockerignore

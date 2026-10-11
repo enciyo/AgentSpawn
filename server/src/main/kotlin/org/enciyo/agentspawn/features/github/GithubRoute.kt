@@ -17,7 +17,6 @@ import org.koin.ktor.ext.inject
 
 private const val PATH = "/github"
 
-
 fun Route.githubRoute() = route(PATH) {
     val service by inject<GithubService>()
     get("status") { status(service) }

@@ -21,7 +21,7 @@ class GitHubCli(
             Command("auth status")
 
         data object Login :
-            Command("auth login --hostname github.com --git-protocol https --web")
+            Command("auth login --hostname github.com --git-protocol https --web --insecure-storage")
 
         data class PullRequest(
             val repoPath: String,
@@ -53,7 +53,15 @@ class GitHubCli(
     }
 
     suspend fun login() =
-        run(GHCommand.Login, timeout = 5, interruptible = false)
+        run(
+            GHCommand.Login,
+            timeout = 8,
+            interruptible = false,
+            env = mapOf(
+                "BROWSER" to "true",
+                "GH_BROWSER" to "true",
+            ),
+        )
 
     suspend fun logout(user: String) =
         run(GHCommand.Logout(user))

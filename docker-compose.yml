@@ -1,4 +1,5 @@
-# AgentSpawn — Server (Ktor API) + Web (Compose JS) ayrı servisler
+# AgentSpawn — Server (Ktor API) + Web (Compose JS static)
+# Sıra: postgres (healthy) → server (healthy) → web
 # docker compose up --build → API: 8080, Web: 3000
 
 services:
@@ -31,6 +32,10 @@ services:
     ports:
       - "8080:8080"
     environment:
+      # development: auth kapalı (tarayıcıdan swagger rahat açılır)
+      # production: API key gerekir (header: X-Api-Key)
+      KTOR_ENV: development
+      PORT: "8080"
       SERVER_PORT: "8080"
       POSTGRES_HOST: postgres
       POSTGRES_PORT: "5432"
@@ -51,8 +56,12 @@ services:
     container_name: agentspawn-web
     ports:
       - "3000:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      server:
+        condition: service_healthy
     restart: unless-stopped
-    # Compose KMP web — Gradle ile çalışır. API: http://localhost:8080
 
 volumes:
   postgres_data:

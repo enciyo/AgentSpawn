@@ -8,5 +8,9 @@ import kotlinx.serialization.Serializable
 data object StartScreen
 
 @Serializable
+@SerialName("onboarding")
+data object OnboardingScreen
+
+@Serializable
 @SerialName("chat")
 data object ChatScreen

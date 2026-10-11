@@ -12,10 +12,16 @@ class ShellService : ShellRunner {
         vararg args: Command,
         timeoutSeconds: Long,
         workingDir: String,
-        interruptible: Boolean
+        interruptible: Boolean,
+        env: Map<String, String>,
     ): Either<AppError, ShellResult> {
         val command = args.joinToString(" ") { it.str }
-        return command.exec(timeout = timeoutSeconds, workingDir = workingDir, interruptible = interruptible).toEither()
+        return command.exec(
+            timeout = timeoutSeconds,
+            workingDir = workingDir,
+            interruptible = interruptible,
+            env = env,
+        ).toEither()
     }
 
     override suspend fun runSyncCommand(

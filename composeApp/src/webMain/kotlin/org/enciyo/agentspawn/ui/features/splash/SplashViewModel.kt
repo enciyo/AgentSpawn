@@ -10,6 +10,7 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import org.enciyo.agentspawn.api.AgentProvider
 import org.enciyo.agentspawn.data.Client
+import kotlin.time.Duration.Companion.milliseconds
 
 data class SplashUiState(
     val isLoading: Boolean = true,
@@ -20,7 +21,7 @@ data class SplashUiState(
     val githubState: GithubState = GithubState(),
 ) {
     val isLoggedIn: Boolean get() = !loggedMail.isNullOrEmpty()
-    val isGithubConnected: Boolean get() = githubState.apiKey.isNotEmpty()
+    val isGithubConnected: Boolean get() = githubState.connected
 }
 
 data class GithubState(
@@ -28,6 +29,7 @@ data class GithubState(
     val code: String = "",
     val redirect: String = "",
     val isLoading: Boolean = false,
+    val connected: Boolean = false,
 )
 
 sealed interface SplashEvent {
@@ -81,12 +83,18 @@ class SplashViewModel(
     }
 
     private fun loginAgent() {
+        _state.update { it.copy(isLoading = true, errorMessage = null) }
         execute(
             call = { client.loginAgent(selectedProvider) },
             onSuccess = {
-                pollUntil { client.statusAgent(selectedProvider).getOrNull()?.output.orEmpty().isNotEmpty() }
+                pollUntil(timeoutMessage = "${selectedProvider.name} girişi zaman aşımına uğradı.") {
+                    client.statusAgent(selectedProvider).getOrNull()?.output.orEmpty().isNotEmpty()
+                }
                     .also { cursorPollJob = it }
                     .invokeOnCompletion { fetchStatus() }
+            },
+            onError = { e ->
+                _state.update { it.copy(isLoading = false, errorMessage = e.message) }
             },
         )
     }
@@ -109,7 +117,6 @@ class SplashViewModel(
 
     fun onOpenGithubLoginPage(isOpen: Boolean) {
         val redirect = state.value.githubState.redirect
-        updateGithub { copy(redirect = "", code = "") }
         if (isOpen) {
             viewModelScope.launch { _events.emit(SplashEvent.OpenLoginUrl(redirect)) }
         }
@@ -119,10 +126,13 @@ class SplashViewModel(
         updateGithub { copy(isLoading = true) }
         execute(
             call = { client.tokenGithub() },
-            onSuccess = { result -> updateGithub { copy(isLoading = false, apiKey = result) } },
+            onSuccess = { result -> updateGithub { copy(isLoading = false, apiKey = result, connected = true) } },
             onError = { e ->
                 updateGithub { copy(isLoading = false) }
-                _state.update { it.copy(errorMessage = e.message.orEmpty()) }
+                val msg = e.message.orEmpty()
+                if (!msg.contains("HTTP 404")) {
+                    _state.update { it.copy(errorMessage = msg) }
+                }
             },
         )
     }
@@ -131,10 +141,14 @@ class SplashViewModel(
         execute(
             call = { client.loginGithub() },
             onSuccess = { result ->
-                updateGithub { copy(code = result.code, redirect = result.openUrl, isLoading = false) }
-                pollUntil { client.tokenGithub().getOrNull().orEmpty().isNotEmpty() }
+                updateGithub { copy(code = result.code, redirect = result.openUrl, isLoading = true) }
+                pollUntil(timeoutMessage = "GitHub girişi zaman aşımına uğradı.") {
+                    client.tokenGithub().getOrNull().orEmpty().isNotEmpty()
+                }
                     .also { githubPollJob = it }
-                    .invokeOnCompletion { fetchGithubToken() }
+                    .invokeOnCompletion { cause ->
+                        if (cause == null) fetchGithubToken()
+                    }
             },
             onError = { e ->
                 updateGithub { copy(isLoading = false) }
@@ -170,15 +184,20 @@ class SplashViewModel(
 
     private fun pollUntil(
         intervalMs: Long = 1000,
+        maxAttempts: Int = 90,
+        timeoutMessage: String,
         condition: suspend () -> Boolean,
     ): Job {
         githubPollJob?.cancel()
         cursorPollJob?.cancel()
         return viewModelScope.launch {
-            while (isActive) {
-                if (condition()) break
-                delay(intervalMs)
+            repeat(maxAttempts) {
+                if (!isActive) return@launch
+                if (condition()) return@launch
+                delay(intervalMs.milliseconds)
             }
+            updateGithub { copy(isLoading = false) }
+            _state.update { it.copy(errorMessage = timeoutMessage) }
         }
     }
 }

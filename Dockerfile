@@ -1,13 +1,11 @@
+# syntax=docker/dockerfile:1
 # =============================================================================
 # AgentSpawn — Kotlin Multiplatform
-# Server (Ktor API) ve Web (Compose JS) ayrı servisler.
-# Varsayılan build: son stage (cursor). docker-compose ile server + web ayağa kalkar.
+# Server ve Web ayrı builder stage'leri: webpack server image'ına girmez.
+# BuildKit cache mount ile Gradle/Kotlin cache kalır (--no-build-cache YOK).
 # =============================================================================
 
-# -----------------------------------------------------------------------------
-# Stage 1: Builder — server + Compose JS web build
-# -----------------------------------------------------------------------------
-FROM eclipse-temurin:23-jdk AS builder
+FROM eclipse-temurin:23-jdk AS base
 
 WORKDIR /app
 
@@ -16,54 +14,119 @@ COPY build.gradle.kts settings.gradle.kts gradle.properties ./
 COPY gradlew gradlew.bat ./
 RUN chmod +x gradlew
 
+ENV GRADLE_OPTS="-Xmx4096m -XX:MaxMetaspaceSize=512m"
+
+# -----------------------------------------------------------------------------
+# Server builder — sadece :server:installDist (webpack yok)
+# -----------------------------------------------------------------------------
+FROM base AS server-builder
+
+COPY server server
+COPY shared shared
+# settings.gradle.kts include(":composeApp") nedeniyle gerekli
+COPY composeApp composeApp
+
+RUN --mount=type=cache,id=agentspawn-gradle-server,target=/root/.gradle \
+    --mount=type=cache,id=agentspawn-kotlin-server,target=/root/.kotlin \
+    ./gradlew :server:installDist --no-daemon --console=plain
+
+# -----------------------------------------------------------------------------
+# Web builder — sadece Compose JS production webpack
+# -----------------------------------------------------------------------------
+FROM base AS web-builder
+
 COPY server server
 COPY shared shared
 COPY composeApp composeApp
 
-ENV GRADLE_OPTS="-Xmx4096m -XX:MaxMetaspaceSize=512m"
+# Yarn/npm TTY yoksa sessiz kalır; CI=true progress'i kapatır
+ENV CI=false \
+    npm_config_loglevel=http \
+    YARN_SILENT=0
 
-RUN ./gradlew :server:installDist :composeApp:jsBrowserProductionWebpack --no-daemon --no-build-cache --parallel --console=plain
+# Ayrı layer: yarn paket indirme — --info her paketi basar
+RUN --mount=type=cache,id=agentspawn-gradle-web,target=/root/.gradle \
+    --mount=type=cache,id=agentspawn-kotlin-web,target=/root/.kotlin \
+    stdbuf -oL -eL ./gradlew :kotlinNpmInstall --no-daemon --console=plain --info
+
+RUN --mount=type=cache,id=agentspawn-gradle-web,target=/root/.gradle \
+    --mount=type=cache,id=agentspawn-kotlin-web,target=/root/.kotlin \
+    stdbuf -oL -eL ./gradlew :composeApp:jsBrowserProductionWebpack --no-daemon --console=plain
+
+# Kotlin/JS çıktı yolu sürümler arası değişebilir — normalize et
+RUN set -eux; \
+    mkdir -p /out; \
+    if [ -d composeApp/build/dist/js/productionExecutable ]; then \
+      cp -a composeApp/build/dist/js/productionExecutable/. /out/; \
+    elif [ -d composeApp/build/kotlin-webpack/js/productionExecutable ]; then \
+      cp -a composeApp/build/kotlin-webpack/js/productionExecutable/. /out/; \
+    else \
+      echo "Webpack output not found"; \
+      find composeApp/build -name 'index.html' -print || true; \
+      exit 1; \
+    fi; \
+    # webMain resources (index.html/styles.css) webpack dist'e her zaman düşmeyebilir
+    cp -f composeApp/src/webMain/resources/index.html /out/index.html; \
+    if [ -f composeApp/src/webMain/resources/styles.css ]; then \
+      cp -f composeApp/src/webMain/resources/styles.css /out/styles.css; \
+    fi
 
 # -----------------------------------------------------------------------------
-# Stage 2: Server — sadece Ktor API (JRE)
+# Server runtime — Ktor API (JRE)
 # -----------------------------------------------------------------------------
 FROM eclipse-temurin:23-jre AS server
 
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends ca-certificates curl git bash sqlite3 && \
+    curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg \
+      -o /usr/share/keyrings/githubcli-archive-keyring.gpg && \
+    chmod go+r /usr/share/keyrings/githubcli-archive-keyring.gpg && \
+    echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" \
+      > /etc/apt/sources.list.d/github-cli.list && \
+    apt-get update && \
+    apt-get install -y --no-install-recommends gh && \
+    curl -fsSL https://cursor.com/install | bash && \
+    rm -rf /var/lib/apt/lists/*
+
+# Install script: ~/.local/bin (yeni) veya ~/.cursor/bin (eski)
+ENV PATH="/root/.local/bin:/root/.cursor/bin:${PATH}"
+RUN agent --version
+
 WORKDIR /app
-COPY --from=builder /app/server/build/install/server /app
+COPY --from=server-builder /app/server/build/install/server /app
 
 ENV SERVER_PORT=8080
 EXPOSE 8080
 
-# -----------------------------------------------------------------------------
-# Stage 3: Web — Compose Multiplatform JS (Gradle ile çalıştırma)
-# -----------------------------------------------------------------------------
-FROM eclipse-temurin:23-jdk AS web
+HEALTHCHECK --interval=5s --timeout=5s --start-period=30s --retries=12 \
+  CMD bash -c 'exec 3<>/dev/tcp/127.0.0.1/8080' || exit 1
 
-WORKDIR /app
-COPY --from=builder /app .
+# -----------------------------------------------------------------------------
+# Web runtime — static nginx (Gradle runtime YOK)
+# -----------------------------------------------------------------------------
+FROM nginx:1.27-alpine AS web
 
-ENV GRADLE_OPTS="-Xmx512m -XX:MaxMetaspaceSize=256m"
+COPY deploy/nginx-web.conf /etc/nginx/conf.d/default.conf
+COPY --from=web-builder /out/ /usr/share/nginx/html/
 
 EXPOSE 3000
 
-# Jetpack Compose KMP web: Gradle run task (webpack dev server)
-# --console=plain: Docker'da log tamponlamasını kapatır, ilerleme görünür
-CMD ["./gradlew", ":composeApp:jsBrowserProductionRun", "--no-daemon", "--console=plain"]
-
 # -----------------------------------------------------------------------------
-# Stage 4: Cursor — geliştirme (varsayılan: docker build .)
+# Cursor — geliştirme (varsayılan: docker build .)
 # -----------------------------------------------------------------------------
 FROM eclipse-temurin:23-jdk AS cursor
 
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends curl bash && \
+    apt-get install -y --no-install-recommends curl bash ca-certificates && \
+    curl -fsSL https://cursor.com/install | bash && \
     rm -rf /var/lib/apt/lists/*
-RUN curl -fsSL https://cursor.com/install | bash
-ENV PATH="/root/.cursor/bin:${PATH}"
+ENV PATH="/root/.local/bin:/root/.cursor/bin:${PATH}"
 RUN agent --version
 
 WORKDIR /app
-COPY --from=builder /app /app
+COPY --from=base /app /app
+COPY server server
+COPY shared shared
+COPY composeApp composeApp
 
 CMD ["bash"]

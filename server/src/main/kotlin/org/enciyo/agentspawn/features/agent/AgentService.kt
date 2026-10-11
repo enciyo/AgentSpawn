@@ -6,7 +6,12 @@ import arrow.core.raise.either
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import org.enciyo.agentspawn.AppError
-import org.enciyo.agentspawn.api.*
+import org.enciyo.agentspawn.api.AgentContentDto
+import org.enciyo.agentspawn.api.AgentDto
+import org.enciyo.agentspawn.api.AgentProvider
+import org.enciyo.agentspawn.api.AgentStatus
+import org.enciyo.agentspawn.api.CreateAgentRequest
+import org.enciyo.agentspawn.api.ResumeAgentRequest
 import org.enciyo.agentspawn.cli.Prompt
 import org.enciyo.agentspawn.cli.agent.AgentCli
 import org.enciyo.agentspawn.cli.agent.AgentProviderFactory
@@ -14,8 +19,7 @@ import org.enciyo.agentspawn.cli.agent.provide
 import org.enciyo.agentspawn.features.agent.mapper.toAgentContentDto
 import org.enciyo.agentspawn.features.agent.model.Agent
 import org.enciyo.agentspawn.features.github.GithubService
-import org.enciyo.agentspawn.ifNullOrEmpty
-import java.util.*
+import java.util.UUID
 
 
 class AgentService(
@@ -169,5 +173,7 @@ class AgentService(
     suspend fun login(provider: String) = provider.provide().login()
 
     suspend fun models(provider: String) = provider.provide().models()
+
+    suspend fun getMcpConfigs(provider: String) = provider.provide().getMcpConfigs()
 
 }

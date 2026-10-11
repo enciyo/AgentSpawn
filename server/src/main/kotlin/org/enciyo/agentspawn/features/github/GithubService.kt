@@ -19,6 +19,11 @@ class GithubService(
     private val gitHubCli: GitHubCli,
 ) {
 
+    companion object {
+        private val ONE_TIME_CODE_REGEX = Regex("""one-time code:\s*([A-Z0-9-]+)""", RegexOption.IGNORE_CASE)
+    }
+
+
     suspend fun clone(
         id: String,
         repoUrl: String,
@@ -90,7 +95,12 @@ class GithubService(
 
     suspend fun login() = either {
         val login = gitHubCli.login().bind()
-        val code = login.output.substringAfter("code: ", "").substringBefore("\n").trim()
+        val output = listOf(login.output, login.error).filter { it.isNotBlank() }.joinToString("\n")
+        val code = ONE_TIME_CODE_REGEX.find(output)?.groupValues?.get(1).orEmpty()
+            .ifBlank { output.substringAfter("code: ", "").substringBefore("\n").trim() }
+        if (code.isBlank()) {
+            raise(AppError.Internal("GitHub device code was not printed. Output:\n${output.take(400)}"))
+        }
         GithubLogin(
             code = code,
             openUrl = "https://github.com/login/device",
@@ -146,4 +156,5 @@ class GithubService(
             .onFailure { print(it) }
             .getOrElse { emptyList() }
 }
+
 

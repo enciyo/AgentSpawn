@@ -96,6 +96,9 @@ class CursorCli(
     override suspend fun listChats(): Either<AppError, List<String>> =
         fileCli.list("$PATH/chats/*/")
 
+    override suspend fun getMcpConfigs(): Either<AppError, ShellResult> =
+        fileCli.read("$PATH/mcp.json")
+
     override suspend fun getChatContent(id: String): Either<AppError, String> =
         sqlLiteCli.getTables(
             "$PATH/chats/*/$id/store.db",
@@ -121,4 +124,5 @@ class CursorCli(
             Commands.Model(),
             Commands.Workspace(Folders.getProjectFolder(id))
         )
+
 }
