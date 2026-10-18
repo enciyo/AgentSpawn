@@ -14,7 +14,6 @@ interface AgentCli {
     suspend fun listChats(): Either<AppError, List<String>>
     suspend fun getChatContent(id: String): Either<AppError, String>
     suspend fun prompt(id: String, prompt: String): Either<AppError, ShellResult>
-    suspend fun getMcpConfigs(): Either<AppError, ShellResult>
     suspend fun clear()
 }
 

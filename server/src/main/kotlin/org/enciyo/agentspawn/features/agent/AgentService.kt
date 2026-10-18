@@ -36,10 +36,15 @@ class AgentService(
     fun sync() {
         launch {
             val allAgents = agentRepository.allAgents()
+            if (allAgents.isEmpty()) return@launch
             val cursor = AgentProvider.Cursor.name.provide()
-            val agentsChats = cursor.listChats().getOrElse { emptyList() }
+            // list fail veya boş → wipe yapma (önceden getOrElse { emptyList } tüm DB'yi siliyordu)
+            val agentsChats = cursor.listChats().getOrElse { return@launch }
+            if (agentsChats.isEmpty()) return@launch
             val toRemove = allAgents.filterNot { agentsChats.contains(it.id) }
-            agentRepository.removeAgens(toRemove.map { it.id })
+            if (toRemove.isNotEmpty()) {
+                agentRepository.removeAgens(toRemove.map { it.id })
+            }
         }
     }
 
@@ -173,7 +178,5 @@ class AgentService(
     suspend fun login(provider: String) = provider.provide().login()
 
     suspend fun models(provider: String) = provider.provide().models()
-
-    suspend fun getMcpConfigs(provider: String) = provider.provide().getMcpConfigs()
 
 }

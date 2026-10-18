@@ -1,6 +1,76 @@
 # Active Context — AgentSpawn
 
-## Son odak (2026-10-11)
+## Teşhis (2026-10-18) — sürekli `agent status --print`
+- Kaynak: `ChatViewModel.pollAgents()` → `refreshProviderGroups()` → `client.statusAgent` → `GET /agents/status` → `agent status --print`
+- Interval: **10s** (`poll(KEY_AGENTS, 10_000)`) — 3s’den yükseltildi
+- Amaç: drawer’da provider login + chat listesini güncel tutmak
+
+## Son odak (2026-10-18)
+MCP JSON EditText: basit syntax highlight (key/string/number/keyword).
+
+## UI (2026-10-18) — JSON highlight (A)
+- `JsonSyntaxHighlightVisualTransformation` + `AppTextField.visualTransformation`
+- Geçersiz JSON’da border error rengi
+
+## Önceki odak (2026-10-18)
+Agent list boş: sync wipe bug + nested Cursor chats path.
+
+## Bugfix (2026-10-18) — No Agents Yet
+- DB `agent` tablosu 0 row; drawer sadece DB’den okur (ham Cursor IDE chat’leri değil).
+- `sync()`: `listChats` fail → `emptyList` → tüm agent’ları siliyordu.
+- Fix: list fail/empty iken wipe yok; `listChats` → `~/.cursor/chats/*/*/` basename.
+
+## Önceki odak (2026-10-18)
+CORS: PUT/DELETE eklendi — MCP Save "Failed to fetch" fix.
+
+## Bugfix (2026-10-18) — MCP Save Failed to fetch
+- Kök: CORS default’ta PUT yok → browser preflight fail.
+- Fix: `CorsConfig` → allow Put + Delete (+ Get/Post/Options).
+
+## Önceki odak (2026-10-18)
+Customize MCP tab: ham `mcp.json` EditText + Save (`GET/PUT /mcp`).
+
+## UI (2026-10-18) — MCP JSON editor
+- `Client.getMcp` / `putMcp`
+- `CustomizeViewModel`: load → pretty JSON; save → parse + PUT
+- MCP tab: monospace multiline field + Save (dirty)
+
+## Önceki odak (2026-10-18)
+MCP file-backed API: `~/.agentspawn/mcp.json` tek kaynak.
+
+## API (2026-10-18) — MCP CRUD (1A/2B/3A)
+- Canonical: `~/.agentspawn/mcp.json` (Cursor-uyumlu `mcpServers` map)
+- Routes: `GET/PUT /mcp`, `POST /mcp/servers`, `DELETE /mcp/servers/{name}`
+- Write-through: her yazmada `~/.cursor/mcp.json`
+- Eski `GET /agents/mcp` + `AgentCli.getMcpConfigs` kaldırıldı
+- FE/Customize henüz bağlı değil
+
+## Önceki odak (2026-10-18)
+Drawer footer version `x.x.x.x` — last digit build counter.
+
+## UI (2026-10-18) — drawer version
+- `composeApp/version.properties` (major/minor/patch/build)
+- Gradle `generateAppVersion`: her compile öncesi build +1, `AppVersion.NAME` üretir
+- Drawer en altta `AppVersion.NAME` gösterir
+
+## Önceki odak (2026-10-18)
+New Agent: drawer chat listesi flicker fix.
+
+## Bugfix (2026-10-18) — New Agent list flicker
+- Kök: `onNewAgent` tüm jobs’ı iptal + boş `DrawerState` + `loadInitialData` → liste silinip yeniden geliyordu.
+- Fix: `KEY_AGENT` iptal; `providerGroups` korunur; sadece `selectedAgentId`/messages/input sıfırlanır; `loadRepositories()` çağrılır.
+
+## Önceki odak (2026-10-18)
+Drawer → Customize: sol drawer kalır, ortadaki chat pane Customize’a geçer.
+
+## UI (2026-10-18) — Customize pane (iskelet)
+- `MainPane` (Chat | Customize) `ChatUiState` içinde.
+- Drawer: Home → **Customize** → New Agent; Customize seçiliyken highlight.
+- Orta alan: `CustomizeScreen` — TabRow MCP | Skills (placeholder metin).
+- Agent / New Agent / provider seçimi → `MainPane.Chat`’e döner.
+- API bağlanmadı (MCP server endpoint var, FE henüz yok).
+
+## Önceki odak (2026-10-11)
 New agent StatusLine: modelden önce provider seçici.
 
 ## UI (2026-10-11) — StatusLine provider before model

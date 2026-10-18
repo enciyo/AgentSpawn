@@ -94,10 +94,14 @@ class CursorCli(
         )
 
     override suspend fun listChats(): Either<AppError, List<String>> =
-        fileCli.list("$PATH/chats/*/")
-
-    override suspend fun getMcpConfigs(): Either<AppError, ShellResult> =
-        fileCli.read("$PATH/mcp.json")
+        // Cursor: ~/.cursor/chats/{projectHash}/{chatId}/
+        fileCli.list("-1d $PATH/chats/*/*/")
+            .map { lines ->
+                lines.map { it.trim().trimEnd('/') }
+                    .map { it.substringAfterLast('/') }
+                    .filter { it.isNotBlank() && !it.contains(':') }
+                    .distinct()
+            }
 
     override suspend fun getChatContent(id: String): Either<AppError, String> =
         sqlLiteCli.getTables(

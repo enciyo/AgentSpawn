@@ -120,7 +120,7 @@ class ChatViewModel(
     }
 
     private fun pollAgents() {
-        poll(KEY_AGENTS, 3000) {
+        poll(KEY_AGENTS, 10_000) {
             updateDrawer { copy(isLoading = providerGroups.isEmpty() && agents.isEmpty()) }
             refreshProviderGroups()
         }
@@ -227,6 +227,7 @@ class ChatViewModel(
                 ),
                 input = it.input.copy(text = ""),
                 message = it.message.copy(status = agent.status, isLoading = true, messages = emptyList()),
+                mainPane = MainPane.Chat,
             )
         }
         if (providerId != previousProviderId) {
@@ -259,6 +260,7 @@ class ChatViewModel(
                 selectedAgentId = null,
             )
         }
+        _state.update { it.copy(mainPane = MainPane.Chat) }
         updateMessage { copy(messages = emptyList(), status = AgentStatus.COMPLETED, isLoading = false) }
         cancel(KEY_AGENT)
         if (providerId != previous) {
@@ -290,20 +292,30 @@ class ChatViewModel(
         }
     }
 
+    fun onCustomize() {
+        _state.update { it.copy(mainPane = MainPane.Customize) }
+    }
+
     fun onToggleGrouping() {
         updateDrawer { copy(isGrouped = !isGrouped) }
     }
 
     fun onNewAgent() {
+        cancel(KEY_AGENT)
         val drawer = state.value.drawer
-        jobs.values.forEach { it.cancel() }
-        _state.value = ChatUiState(
-            drawer = DrawerState(
-                selectedProviderId = drawer.selectedProviderId,
-                isGrouped = drawer.isGrouped,
-            ),
-        )
-        loadInitialData()
+        val input = state.value.input
+        _state.update {
+            it.copy(
+                drawer = drawer.copy(selectedAgentId = null),
+                message = MessageState(),
+                input = InputState(
+                    models = input.models,
+                    selectedModel = input.selectedModel,
+                ),
+                mainPane = MainPane.Chat,
+            )
+        }
+        loadRepositories()
     }
 
     fun onInputChange(text: String) {

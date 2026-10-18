@@ -26,12 +26,14 @@ import androidx.compose.ui.unit.dp
 import org.enciyo.agentspawn.api.AgentDto
 import org.enciyo.agentspawn.ui.design.DrawerTokens
 import org.enciyo.agentspawn.ui.features.components.DisplayScreen
+import org.enciyo.agentspawn.ui.features.customize.CustomizeScreen
 import org.koin.compose.viewmodel.koinViewModel
 
 
 data class DrawerActions(
     val onAgent: (AgentDto) -> Unit,
     val onHome: () -> Unit,
+    val onCustomize: () -> Unit,
     val onNewAgent: () -> Unit,
     val onSelectProvider: (String) -> Unit,
     val onToggleGrouping: () -> Unit,
@@ -63,6 +65,7 @@ fun ChatRoute(
         DrawerActions(
             onAgent = viewModel::onAgent,
             onHome = viewModel::onHome,
+            onCustomize = viewModel::onCustomize,
             onNewAgent = viewModel::onNewAgent,
             onSelectProvider = viewModel::onSelectProvider,
             onToggleGrouping = viewModel::onToggleGrouping,
@@ -146,33 +149,40 @@ fun ChatScreen(
                     .weight(1f)
                     .fillMaxHeight()
                     .padding(vertical = 16.dp, horizontal = 32.dp),
-                contentAlignment = BiasAlignment(0f, alignmentBias)
+                contentAlignment = when (state.mainPane) {
+                    MainPane.Chat -> BiasAlignment(0f, alignmentBias)
+                    MainPane.Customize -> Alignment.TopCenter
+                },
             ) {
-                Column(
-                    modifier = Modifier.widthIn(min = 200.dp, max = 720.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                ) {
-
-                    MessageScreenAnimatedVisibility(state)
-                    Column(modifier = Modifier.border()) {
-                        AnimatedVisibility(visible = state.message.status.isActive) {
-                            LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                when (state.mainPane) {
+                    MainPane.Customize -> CustomizeScreen()
+                    MainPane.Chat -> {
+                        Column(
+                            modifier = Modifier.widthIn(min = 200.dp, max = 720.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                        ) {
+                            MessageScreenAnimatedVisibility(state)
+                            Column(modifier = Modifier.border()) {
+                                AnimatedVisibility(visible = state.message.status.isActive) {
+                                    LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                                }
+                                InputScreen(
+                                    state = state.input,
+                                    actions = inputActions,
+                                )
+                                StatusLine(
+                                    state = state.input,
+                                    actions = statusLineActions,
+                                    selectedProvider = state.drawer.selectedProvider.displayName,
+                                    providers = state.drawer.selectableProviderNames,
+                                    isChatStarted = state.isChatStarted,
+                                    isLoading = state.message.isLoading ||
+                                        state.message.status.isActive ||
+                                        state.input.isPending ||
+                                        !state.input.isEnabled,
+                                )
+                            }
                         }
-                        InputScreen(
-                            state = state.input,
-                            actions = inputActions,
-                        )
-                        StatusLine(
-                            state = state.input,
-                            actions = statusLineActions,
-                            selectedProvider = state.drawer.selectedProvider.displayName,
-                            providers = state.drawer.selectableProviderNames,
-                            isChatStarted = state.isChatStarted,
-                            isLoading = state.message.isLoading ||
-                                state.message.status.isActive ||
-                                state.input.isPending ||
-                                !state.input.isEnabled,
-                        )
                     }
                 }
             }
@@ -206,6 +216,7 @@ fun ChatScreen(
                     DrawerContent(
                         state = state.drawer,
                         actions = drawerActions,
+                        isCustomizeSelected = state.mainPane == MainPane.Customize,
                     )
                 }
             }

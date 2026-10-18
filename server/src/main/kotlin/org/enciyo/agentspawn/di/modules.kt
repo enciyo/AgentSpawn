@@ -18,6 +18,7 @@ import org.enciyo.agentspawn.features.agent.AgentRepository
 import org.enciyo.agentspawn.features.agent.AgentRepositoryImpl
 import org.enciyo.agentspawn.features.agent.AgentService
 import org.enciyo.agentspawn.features.github.GithubService
+import org.enciyo.agentspawn.features.mcp.McpService
 import org.enciyo.agentspawn.features.shell.ShellService
 import org.koin.core.module.dsl.singleOf
 import org.koin.dsl.bind
@@ -40,6 +41,7 @@ val Application.appModule
             singleOf(::ShellService) bind ShellRunner::class
             singleOf(::AgentService)
             singleOf(::GithubService)
+            singleOf(::McpService)
 
             singleOf(::AgentRepositoryImpl) bind AgentRepository::class
             singleOf(::DefaultAgentProviderFactory) bind AgentProviderFactory::class

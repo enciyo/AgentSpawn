@@ -1,6 +1,7 @@
 package org.enciyo.agentspawn.ui.features.chat
 
 import agentspawn.composeapp.generated.resources.Res
+import agentspawn.composeapp.generated.resources.customize
 import agentspawn.composeapp.generated.resources.home
 import agentspawn.composeapp.generated.resources.new_agent
 import agentspawn.composeapp.generated.resources.no_agents
@@ -13,6 +14,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ExitToApp
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.CreateNewFolder
+import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
@@ -23,6 +25,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import org.enciyo.agentspawn.AppVersion
 import org.enciyo.agentspawn.api.AgentDto
 import org.enciyo.agentspawn.api.AgentStatus.*
 import org.enciyo.agentspawn.ui.design.DrawerTokens
@@ -35,6 +38,7 @@ import org.jetbrains.compose.resources.stringResource
 internal fun DrawerContent(
     state: DrawerState,
     actions: DrawerActions,
+    isCustomizeSelected: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -50,7 +54,9 @@ internal fun DrawerContent(
         }
         DrawerActions(
             onHome = actions.onHome,
+            onCustomize = actions.onCustomize,
             onNewAgent = actions.onNewAgent,
+            isCustomizeSelected = isCustomizeSelected,
         )
         GroupingToggle(
             isGrouped = state.isGrouped,
@@ -64,27 +70,47 @@ internal fun DrawerContent(
                 selectedProviderId = state.selectedProviderId,
                 onAgent = actions.onAgent,
                 onSelectProvider = actions.onSelectProvider,
+                modifier = Modifier.weight(1f),
             )
         } else {
             FlatAgentList(
                 agents = state.agents,
                 selectedAgentId = state.selectedAgentId,
                 onAgent = actions.onAgent,
+                modifier = Modifier.weight(1f),
             )
         }
+        Text(
+            text = AppVersion.NAME,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp, vertical = 8.dp),
+        )
     }
 }
 
 @Composable
 private fun DrawerActions(
     onHome: () -> Unit,
+    onCustomize: () -> Unit,
     onNewAgent: () -> Unit,
+    isCustomizeSelected: Boolean,
 ) {
     AppItem(
         onClick = onHome,
         state = AppItemState.withIcon(
             vector = Icons.AutoMirrored.Outlined.ExitToApp,
             text = stringResource(Res.string.home)
+        )
+    )
+    AppItem(
+        onClick = onCustomize,
+        state = AppItemState.withIcon(
+            vector = Icons.Outlined.Tune,
+            text = stringResource(Res.string.customize),
+            isSelected = isCustomizeSelected,
         )
     )
     AppItem(

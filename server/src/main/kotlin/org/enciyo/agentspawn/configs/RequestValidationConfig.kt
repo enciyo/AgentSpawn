@@ -4,6 +4,7 @@ import io.ktor.server.plugins.requestvalidation.RequestValidationConfig
 import io.ktor.server.plugins.requestvalidation.ValidationResult
 import org.enciyo.agentspawn.api.CreateAgentRequest
 import org.enciyo.agentspawn.api.RunShellRequest
+import org.enciyo.agentspawn.api.UpsertMcpServerRequest
 
 
 fun RequestValidationConfig.handle() {
@@ -20,6 +21,12 @@ fun RequestValidationConfig.handle() {
             request.ref.isBlank() -> ValidationResult.Invalid("Ref cannot be blank")
             request.repository.isBlank() -> ValidationResult.Invalid("Repository cannot be blank")
             request.model.isEmpty() -> ValidationResult.Invalid("Model cannot be blank")
+            else -> ValidationResult.Valid
+        }
+    }
+    validate<UpsertMcpServerRequest> { request ->
+        when {
+            request.name.isBlank() -> ValidationResult.Invalid("MCP server name cannot be blank")
             else -> ValidationResult.Valid
         }
     }

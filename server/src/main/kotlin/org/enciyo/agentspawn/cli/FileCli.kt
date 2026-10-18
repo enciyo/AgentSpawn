@@ -13,6 +13,8 @@ class FileCli(shellRunner: ShellRunner) : Cli(shellRunner) {
         data class MakeDirectory(val path: String) : Command("mkdir -p $path")
         data class Delete(val path: String) : Command("rm -rf $path")
         data class Read(val path: String) : Command("cat $path")
+        data class Write(val path: String, val content: String) :
+            Command("printf %s ${Command.userInput(content)} > $path")
     }
 
     suspend fun list(
@@ -31,5 +33,8 @@ class FileCli(shellRunner: ShellRunner) : Cli(shellRunner) {
 
     suspend fun read(string: String): Either<AppError, ShellResult> =
         run(FileCommand.Read(string))
+
+    suspend fun write(path: String, content: String): Either<AppError, ShellResult> =
+        run(FileCommand.Write(path, content))
 
 }

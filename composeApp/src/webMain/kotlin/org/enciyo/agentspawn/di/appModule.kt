@@ -9,6 +9,7 @@ import kotlinx.serialization.json.Json
 import org.enciyo.agentspawn.API_BASE_URL
 import org.enciyo.agentspawn.data.Client
 import org.enciyo.agentspawn.ui.features.chat.ChatViewModel
+import org.enciyo.agentspawn.ui.features.customize.CustomizeViewModel
 import org.enciyo.agentspawn.ui.features.splash.SplashViewModel
 import org.koin.core.module.dsl.singleOf
 import org.koin.core.module.dsl.viewModelOf
@@ -19,6 +20,7 @@ val appModule = module {
     singleOf(::Client)
     viewModelOf(::SplashViewModel)
     viewModelOf(::ChatViewModel)
+    viewModelOf(::CustomizeViewModel)
 }
 
 

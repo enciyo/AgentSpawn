@@ -2,6 +2,10 @@ package org.enciyo.agentspawn.cli
 
 object Folders {
     const val ROOT_PROJECTS = "~/projects"
+    const val AGENTSPAWN_ROOT = "~/.agentspawn"
+    const val MCP_CONFIG = "$AGENTSPAWN_ROOT/mcp.json"
+    const val CURSOR_MCP_CONFIG = "~/.cursor/mcp.json"
+
     fun getProjectFolder(chatId: String) = "$ROOT_PROJECTS/$chatId"
 }
 

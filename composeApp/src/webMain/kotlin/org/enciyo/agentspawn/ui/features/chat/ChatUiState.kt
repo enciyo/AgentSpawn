@@ -5,10 +5,16 @@ import org.enciyo.agentspawn.api.AgentMessageDto
 import org.enciyo.agentspawn.api.AgentProvider
 import org.enciyo.agentspawn.api.AgentStatus
 
+enum class MainPane {
+    Chat,
+    Customize,
+}
+
 data class ChatUiState(
     val drawer: DrawerState = DrawerState(),
     val message: MessageState = MessageState(),
     val input: InputState = InputState(),
+    val mainPane: MainPane = MainPane.Chat,
 ) {
     val isChatStarted: Boolean
         get() = message.messages.isNotEmpty()

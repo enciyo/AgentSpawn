@@ -28,6 +28,7 @@ fun AppTextField(
     singleLine: Boolean = line == 1,
     contentPadding: PaddingValues = TextFieldDefaults.contentPaddingWithoutLabel(top = 8.dp, bottom = 8.dp),
     textStyle: TextStyle = MaterialTheme.typography.bodyMedium,
+    visualTransformation: VisualTransformation = VisualTransformation.None,
     trailingIcon: @Composable (() -> Unit)? = null,
 ) {
     BasicTextField(
@@ -38,6 +39,7 @@ fun AppTextField(
         maxLines = line,
         enabled = isEnabled,
         singleLine = singleLine,
+        visualTransformation = visualTransformation,
         cursorBrush = SolidColor(MaterialTheme.colorScheme.onPrimaryContainer),
         textStyle = textStyle.copy(
             color = if (isEnabled) MaterialTheme.colorScheme.onPrimaryContainer
@@ -51,7 +53,7 @@ fun AppTextField(
             interactionSource = remember { MutableInteractionSource() },
             colors = textFieldColors,
             singleLine = false,
-            visualTransformation = VisualTransformation.None,
+            visualTransformation = visualTransformation,
             trailingIcon = trailingIcon,
             placeholder = {
                 Text(

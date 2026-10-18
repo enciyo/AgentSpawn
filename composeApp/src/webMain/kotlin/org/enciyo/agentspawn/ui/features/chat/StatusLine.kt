@@ -132,7 +132,7 @@ internal fun StatusLine(
                     modifier = Modifier
                         .size(16.dp)
                         .clickable(onClick = actions.onSendMessage),
-                    contentDescription = "Shift + Enter",
+                    contentDescription = "Command + Enter",
                 )
             }
         }

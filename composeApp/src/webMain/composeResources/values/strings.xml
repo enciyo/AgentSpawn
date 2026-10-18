@@ -5,6 +5,15 @@
     <string name="home">Home</string>
     <string name="login_description">After login, please refresh the page</string>
     <string name="new_agent">New Agent</string>
+    <string name="customize">Customize</string>
+    <string name="customize_mcp">MCP</string>
+    <string name="customize_skills">Skills</string>
+    <string name="customize_mcp_placeholder">MCP actions will appear here.</string>
+    <string name="customize_mcp_json_placeholder">{
+  "mcpServers": {}
+}</string>
+    <string name="customize_mcp_save">Save</string>
+    <string name="customize_skills_placeholder">Skills actions will appear here.</string>
     <string name="no_agents">No Agents Yet</string>
     <string name="input_place_holder">Ask something</string>
     <string name="thinking">Thinking...</string>

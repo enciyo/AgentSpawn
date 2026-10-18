@@ -5,6 +5,11 @@ import io.ktor.server.plugins.cors.*
 
 
 fun CORSConfig.handle() {
+    allowMethod(HttpMethod.Options)
+    allowMethod(HttpMethod.Get)
+    allowMethod(HttpMethod.Post)
+    allowMethod(HttpMethod.Put)
+    allowMethod(HttpMethod.Delete)
     allowHeader(HttpHeaders.Authorization)
     allowHeader(HttpHeaders.ContentType)
     anyHost()

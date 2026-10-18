@@ -21,12 +21,12 @@ import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import io.ktor.server.routing.openapi.*
 import io.swagger.codegen.v3.generators.html.StaticHtmlCodegen
-import kotlinx.coroutines.delay
 import org.enciyo.agentspawn.configs.AppConfig
 import org.enciyo.agentspawn.configs.handle
 import org.enciyo.agentspawn.di.appModule
 import org.enciyo.agentspawn.features.agent.agentRoute
 import org.enciyo.agentspawn.features.github.githubRoute
+import org.enciyo.agentspawn.features.mcp.mcpRoute
 import org.enciyo.agentspawn.features.shell.shellRoute
 import org.flywaydb.core.Flyway
 import org.jetbrains.exposed.v1.jdbc.Database
@@ -34,7 +34,6 @@ import org.koin.core.KoinKtorApplication
 import org.koin.ktor.ext.inject
 import org.koin.ktor.plugin.Koin
 import org.koin.logger.slf4jLogger
-import kotlin.io.path.Path
 
 fun main(args: Array<String>) {
     EngineMain.main(args)
@@ -94,6 +93,7 @@ private fun Application.configureRouting(appConfig: AppConfig) {
             shellRoute()
             agentRoute()
             githubRoute()
+            mcpRoute()
             swaggerUI(path = "swagger") { handle() }
             openAPI(path = "openapi") { handle() }
             route("redoc") {

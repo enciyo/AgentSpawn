@@ -6,7 +6,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.key.Key
-import androidx.compose.ui.input.key.isShiftPressed
+import androidx.compose.ui.input.key.isMetaPressed
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import org.enciyo.agentspawn.ui.features.components.AppTextField
@@ -27,7 +27,7 @@ internal fun InputScreen(
         modifier = modifier
             .fillMaxWidth()
             .onPreviewKeyEvent { event ->
-                if (event.isShiftPressed && event.key == Key.Enter && state.isVisibleSendButton) {
+                if (event.isMetaPressed && event.key == Key.Enter && state.isVisibleSendButton) {
                     actions.onSendMessage()
                     true
                 } else false
