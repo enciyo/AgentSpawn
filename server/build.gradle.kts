@@ -51,6 +51,7 @@ dependencies {
     implementation(libs.ktor.authApiKey)
     implementation(libs.ktor.hostCommon)
     implementation(libs.ktor.statusPages)
+    implementation(libs.ktor.serverSse)
     implementation(libs.koin.ktor)
     implementation(libs.koin.loggerSlf4j)
 

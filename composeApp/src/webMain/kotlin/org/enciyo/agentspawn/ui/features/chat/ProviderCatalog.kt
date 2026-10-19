@@ -3,8 +3,8 @@ package org.enciyo.agentspawn.ui.features.chat
 import org.enciyo.agentspawn.api.AgentProvider
 
 /**
- * Drawer / chat için bilinen provider kataloğu.
- * [agentProvider] null ise henüz API'ye bağlı değil; UI section olarak yine gösterilir.
+ * Catalog of known providers for the drawer / chat.
+ * If [agentProvider] is null it isn't wired to the API yet; the UI still shows it as a section.
  */
 data class ProviderInfo(
     val id: String,
@@ -27,9 +27,9 @@ object ProviderCatalog {
             agentProvider = null,
         ),
         ProviderInfo(
-            id = "ClaudeCode",
+            id = AgentProvider.Claude.name,
             displayName = "Claude Code",
-            agentProvider = null,
+            agentProvider = AgentProvider.Claude,
         ),
         ProviderInfo(
             id = "Gemini",

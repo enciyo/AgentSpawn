@@ -31,6 +31,7 @@ data class ProviderListItem(
     val id: String,
     val name: String,
     val actionLabel: String,
+    val subtitle: String? = null,
     val availability: ProviderAvailability = ProviderAvailability.Available,
     val isLoading: Boolean = false,
 )
@@ -80,11 +81,20 @@ private fun ProviderListRow(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Text(
-                text = item.name,
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onSurface
-            )
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = item.name,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                if (!item.subtitle.isNullOrBlank()) {
+                    Text(
+                        text = item.subtitle,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
             if (item.availability == ProviderAvailability.ComingSoon) {
                 Surface(
                     color = MaterialTheme.colorScheme.surface,

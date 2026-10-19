@@ -49,6 +49,9 @@ import org.enciyo.agentspawn.ui.features.components.ProviderList
 import org.enciyo.agentspawn.ui.features.components.ProviderListItem
 import org.enciyo.agentspawn.ui.features.components.ToastType
 import org.enciyo.agentspawn.ui.features.splash.SplashEvent
+import org.enciyo.agentspawn.api.AgentProvider
+import org.enciyo.agentspawn.ui.features.chat.ProviderCatalog
+import org.enciyo.agentspawn.ui.features.splash.SplashUiState
 import org.enciyo.agentspawn.ui.features.splash.SplashViewModel
 import org.koin.compose.viewmodel.koinViewModel
 import kotlin.time.Duration.Companion.milliseconds
@@ -86,10 +89,7 @@ fun OnboardingRoute(
     ) {
         if (showingProviders) {
             ProvidersOnboardingScreen(
-                isLoading = state.isLoading,
-                isConnected = state.isLoggedIn,
-                account = state.loggedMail,
-                errorMessage = state.errorMessage,
+                state = state,
                 onConnect = viewModel::onProviderToggle,
                 onContinue = onNavigateChat
             )
@@ -227,7 +227,7 @@ fun OnboardingRoute(
         }
         if (showCopiedBanner) {
             ToastBanner(
-                message = "Kopyalandı",
+                message = "Copied",
                 type = ToastType.Success,
                 modifier = Modifier.align(Alignment.TopEnd).padding(24.dp)
             )
@@ -237,11 +237,8 @@ fun OnboardingRoute(
 
 @Composable
 private fun ProvidersOnboardingScreen(
-    isLoading: Boolean,
-    isConnected: Boolean,
-    account: String?,
-    errorMessage: String?,
-    onConnect: () -> Unit,
+    state: SplashUiState,
+    onConnect: (AgentProvider) -> Unit,
     onContinue: () -> Unit,
 ) {
     Column(
@@ -264,45 +261,34 @@ private fun ProvidersOnboardingScreen(
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         ProviderList(
-            items = listOf(
-                ProviderListItem(
-                    id = "cursor",
-                    name = "Cursor",
-                    actionLabel = if (isConnected) "Disconnect" else "Connect",
-                    isLoading = isLoading
-                ),
-                ProviderListItem(
-                    id = "chatgpt",
-                    name = "ChatGPT",
-                    actionLabel = "Coming Soon",
-                    availability = ProviderAvailability.ComingSoon
-                ),
-                ProviderListItem(
-                    id = "claude-code",
-                    name = "Claude Code",
-                    actionLabel = "Coming Soon",
-                    availability = ProviderAvailability.ComingSoon
-                ),
-                ProviderListItem(
-                    id = "gemini",
-                    name = "Gemini",
-                    actionLabel = "Coming Soon",
-                    availability = ProviderAvailability.ComingSoon
-                )
-            ),
+            items = ProviderCatalog.all.map { info ->
+                val provider = info.agentProvider
+                if (provider == null) {
+                    ProviderListItem(
+                        id = info.id,
+                        name = info.displayName,
+                        actionLabel = "Coming Soon",
+                        availability = ProviderAvailability.ComingSoon
+                    )
+                } else {
+                    val providerState = state.provider(provider)
+                    ProviderListItem(
+                        id = info.id,
+                        name = info.displayName,
+                        actionLabel = if (providerState.isLoggedIn) "Disconnect" else "Connect",
+                        subtitle = providerState.loggedMail,
+                        isLoading = providerState.isLoading
+                    )
+                }
+            },
             onAction = { item ->
-                if (item.id == "cursor") onConnect()
+                ProviderCatalog.byId(item.id)?.agentProvider?.let(onConnect)
             }
         )
-        if (errorMessage != null) {
-            Text(text = errorMessage, color = MaterialTheme.colorScheme.error)
+        if (state.errorMessage != null) {
+            Text(text = state.errorMessage, color = MaterialTheme.colorScheme.error)
         }
-        if (isConnected) {
-            Text(
-                text = account.orEmpty(),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+        if (state.isLoggedIn) {
             Button(onClick = onContinue, modifier = Modifier.fillMaxWidth()) {
                 Text("Continue")
             }

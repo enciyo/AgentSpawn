@@ -5,7 +5,12 @@ import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import io.ktor.server.routing.openapi.*
+import io.ktor.server.sse.*
+import io.ktor.sse.*
 import io.ktor.utils.io.*
+import kotlinx.serialization.json.Json
+import org.enciyo.agentspawn.api.AgentStreamEvent
+import kotlin.time.Duration.Companion.seconds
 import org.enciyo.agentspawn.api.AgentProvider
 import org.enciyo.agentspawn.api.CreateAgentRequest
 import org.enciyo.agentspawn.api.ResumeAgentRequest
@@ -23,6 +28,7 @@ fun Route.agentRoute() = route(PATH) {
     get("logout") { logout(service) }
     get("list") { list(service) }
     get("{id}") { get(service) }
+    sse("{id}/stream") { stream(service) }
     post("create") { create(service) }
     post("resume") { resume(service) }
     get("models") { models(service) }
@@ -57,6 +63,22 @@ private suspend fun RoutingContext.get(service: AgentService) {
     val result = service.agentById(id).getOrRespondError() ?: return
     call.respond(result)
 }
+
+/** Streams agent run events as SSE; each event's `data` field is an [AgentStreamEvent] as JSON. */
+private suspend fun ServerSSESession.stream(service: AgentService) {
+    heartbeat {
+        period = 15.seconds
+        event = ServerSentEvent(comments = "ping")
+    }
+    val id = call.parameters["id"].orEmpty()
+    service.stream(id).fold(
+        ifLeft = { send(AgentStreamEvent.Error(it.message)) },
+        ifRight = { events -> events.collect { send(it) } },
+    )
+}
+
+private suspend fun ServerSSESession.send(event: AgentStreamEvent) =
+    send(ServerSentEvent(data = Json.encodeToString(AgentStreamEvent.serializer(), event)))
 
 private suspend fun RoutingContext.create(service: AgentService) {
     val request = call.receive<CreateAgentRequest>()

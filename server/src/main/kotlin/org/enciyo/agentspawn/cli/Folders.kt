@@ -6,37 +6,42 @@ object Folders {
     const val MCP_CONFIG = "$AGENTSPAWN_ROOT/mcp.json"
     const val CURSOR_MCP_CONFIG = "~/.cursor/mcp.json"
 
+    val HOME: String = System.getProperty("user.home")
+
     fun getProjectFolder(chatId: String) = "$ROOT_PROJECTS/$chatId"
+
+    /** Absolute projects path; non-shell uses such as ACP `cwd` don't expand `~`. */
+    fun getProjectDir(chatId: String) = getProjectFolder(chatId).replaceFirst("~", HOME)
 }
 
 
 object Prompt {
 
     val generateCommitMessagePrompt = """
-        Sen bir kıdemli yazılım mühendisisin. Görevin, sana iletilen kod değişikliklerini (changelist/diff) analiz ederek Conventional Commits standartlarına uygun, kısa ve öz bir commit mesajı oluşturmaktır.
-        Kurallar:
-        Format: <tip>(<kapsam>): <açıklama> yapısını kullan (Örn: feat(ui): add logout button veya fix(api): resolve null pointer exception).
-        Sadece Mesaj: Yanıtında asla giriş cümlesi, açıklama, "İşte mesajınız:" gibi ifadeler veya markdown kod blokları kullanma. Sadece ve sadece commit mesajının kendisini dön.
-        Dil: Commit mesajını İngilizce olarak oluştur.
-        İçerik: Değişikliğin "ne" yaptığını ve teknik amacını yansıt.
+        You are a senior software engineer. Your task is to analyze the code changes you are given (changelist/diff) and write a short, concise commit message that follows the Conventional Commits standard.
+        Rules:
+        Format: Use the <type>(<scope>): <description> structure (e.g. feat(ui): add logout button or fix(api): resolve null pointer exception).
+        Message only: Never include an introductory sentence, explanation, phrases like "Here is your message:" or markdown code blocks in your response. Return only the commit message itself.
+        Language: Write the commit message in English.
+        Content: Reflect "what" the change does and its technical purpose.
     """.trimIndent()
 
     val generatePullRequestBodyPrompt = """
-        Sen profesyonel bir yazılım dokümantasyon uzmanısın. Sana iletilen kod değişikliklerini (changelist/diff) analiz ederek GitHub/GitLab standartlarında, temiz ve profesyonel bir Pull Request (PR) Body metni oluşturmalısın.
-        Kurallar:
-        Yapı: Metni şu başlıklarla oluştur: ## Summary, ## Changes, ## Impact. (İsteğe bağlı: ## Testing).
-        Dil: PR içeriğini İngilizce olarak oluştur.
-        Format: Değişiklikleri maddeler (bullet points) halinde listele.
-        Sadece İçerik: Yanıtında hiçbir giriş cümlesi, "İşte PR açıklaması" gibi yorumlar veya Markdown kod blokları (triple backticks) kullanma. Sadece ham Markdown metnini dön.
-        Odak: Teknik detaylara odaklan ama işlevsel değişikliği net bir şekilde açıkla.
+        You are a professional software documentation specialist. Analyze the code changes you are given (changelist/diff) and write a clean, professional Pull Request (PR) body that follows GitHub/GitLab conventions.
+        Rules:
+        Structure: Use these headings: ## Summary, ## Changes, ## Impact. (Optional: ## Testing).
+        Language: Write the PR content in English.
+        Format: List the changes as bullet points.
+        Content only: Do not include any introductory sentence, remarks like "Here is the PR description" or Markdown code blocks (triple backticks) in your response. Return only the raw Markdown text.
+        Focus: Focus on technical details, but explain the functional change clearly.
     """.trimIndent()
 
     val generatePullRequestTitlePrompt = """
-        Sen profesyonel bir yazılım dokümantasyon uzmanısın. Sana iletilen kod değişikliklerini (changelist/diff) analiz ederek GitHub/GitLab standartlarında, temiz ve profesyonel bir Pull Request (PR) Title metni oluşturmalısın.
-        Kurallar:
-        Dil: PR içeriğini İngilizce olarak oluştur.
-        Format: Tek ve vurucu bir cümle
-        Sadece İçerik: Yanıtında hiçbir giriş cümlesi, "İşte PR açıklaması" gibi yorumlar veya Markdown kod blokları (triple backticks) kullanma. Sadece ham Markdown metnini dön.
-        Odak: Teknik detaylara odaklan ama işlevsel değişikliği net bir şekilde açıkla.
+        You are a professional software documentation specialist. Analyze the code changes you are given (changelist/diff) and write a clean, professional Pull Request (PR) title that follows GitHub/GitLab conventions.
+        Rules:
+        Language: Write the PR title in English.
+        Format: A single, punchy sentence.
+        Content only: Do not include any introductory sentence, remarks like "Here is the PR title" or Markdown code blocks (triple backticks) in your response. Return only the raw text.
+        Focus: Focus on technical details, but explain the functional change clearly.
     """.trimIndent()
 }

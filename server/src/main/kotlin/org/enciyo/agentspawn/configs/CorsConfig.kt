@@ -12,5 +12,7 @@ fun CORSConfig.handle() {
     allowMethod(HttpMethod.Delete)
     allowHeader(HttpHeaders.Authorization)
     allowHeader(HttpHeaders.ContentType)
+    allowHeader(HttpHeaders.CacheControl)
+    allowHeader(HttpHeaders.LastEventID)
     anyHost()
 }

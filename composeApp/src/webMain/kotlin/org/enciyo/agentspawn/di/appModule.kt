@@ -4,6 +4,7 @@ import io.ktor.client.HttpClient
 import io.ktor.client.engine.js.Js
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.plugins.defaultRequest
+import io.ktor.client.plugins.sse.SSE
 import io.ktor.serialization.kotlinx.json.json
 import kotlinx.serialization.json.Json
 import org.enciyo.agentspawn.API_BASE_URL
@@ -28,6 +29,7 @@ private fun provideHttpClient() = HttpClient(Js) {
     defaultRequest {
         url(API_BASE_URL)
     }
+    install(SSE)
     install(ContentNegotiation) {
         json(Json {
             ignoreUnknownKeys = true

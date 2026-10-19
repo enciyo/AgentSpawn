@@ -11,6 +11,8 @@ data class AgentDto(
     val ref: String,
     val repository: String,
     val provider: String,
-    val lastModel: String
+    val lastModel: String,
+    /** ACP session id; null for pre-ACP agents (whose session id is then [id]). */
+    val sessionId: String? = null,
 )
 

@@ -5,6 +5,7 @@ import io.ktor.server.application.Application
 import io.ktor.server.config.HoconApplicationConfig
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
+import org.enciyo.agentspawn.cli.providers.ClaudeCli
 import org.enciyo.agentspawn.cli.providers.CursorCli
 import org.enciyo.agentspawn.cli.FileCli
 import org.enciyo.agentspawn.cli.GitCli
@@ -17,6 +18,7 @@ import org.enciyo.agentspawn.configs.AppConfig
 import org.enciyo.agentspawn.features.agent.AgentRepository
 import org.enciyo.agentspawn.features.agent.AgentRepositoryImpl
 import org.enciyo.agentspawn.features.agent.AgentService
+import org.enciyo.agentspawn.features.agent.AgentStreamHub
 import org.enciyo.agentspawn.features.github.GithubService
 import org.enciyo.agentspawn.features.mcp.McpService
 import org.enciyo.agentspawn.features.shell.ShellService
@@ -36,10 +38,12 @@ val Application.appModule
             singleOf(::FileCli)
             singleOf(::GitHubCli)
             singleOf(::CursorCli)
+            singleOf(::ClaudeCli)
 
             //Services
             singleOf(::ShellService) bind ShellRunner::class
             singleOf(::AgentService)
+            singleOf(::AgentStreamHub)
             singleOf(::GithubService)
             singleOf(::McpService)
 

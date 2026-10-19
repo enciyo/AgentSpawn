@@ -34,7 +34,7 @@ POST /agents/create
 
 → Agent clones repo
 → Creates branch
-→ Writes code via Cursor CLI
+→ Writes code via the agent (Cursor or Claude Code, over ACP)
 → Commits & pushes
 → Opens a Pull Request
 ```
@@ -47,7 +47,10 @@ This makes AI coding agents usable from orchestration tools like **n8n**, **Temp
 
 | | Feature | Description |
 |---|---------|-------------|
-| 🔌 | **REST API for CLI Agents** | Expose Cursor (and soon Claude Code, Cline) as HTTP endpoints |
+| 🔌 | **REST API for CLI Agents** | Expose Cursor and Claude Code (soon Cline) as HTTP endpoints |
+| 🧩 | **Agent Client Protocol** | Every provider is driven over [ACP](https://agentclientprotocol.com) (JSON-RPC over stdio) with one shared client |
+| 📡 | **Live Streaming** | Agent output (messages, thoughts, tool calls) streamed as Server-Sent Events |
+| 🛠️ | **MCP Servers** | Manage Model Context Protocol servers via `/mcp`; they are passed to agents automatically |
 | 🔄 | **Full Git Automation** | Clone → branch → code → commit → push → PR in a single API call |
 | 🤖 | **Agent Lifecycle** | Create, resume, monitor, and manage agents with persistent state |
 | 🐙 | **GitHub Integration** | Repository cloning, branch management, and automatic PR creation |
@@ -76,8 +79,8 @@ This makes AI coding agents usable from orchestration tools like **n8n**, **Temp
      ┌────────▼───────┐  ┌───────▼────────┐  ┌───────▼────────┐
      │  GitHub CLI     │  │  Agent CLI     │  │  PostgreSQL    │
      │  clone, branch  │  │  Cursor        │  │  state &       │
-     │  commit, push   │  │  (Claude Code) │  │  chat history  │
-     │  PR creation    │  │  (Cline)       │  │                │
+     │  commit, push   │  │  Claude Code   │  │  chat history  │
+     │  PR creation    │  │  (over ACP)    │  │                │
      └────────────────┘  └────────────────┘  └────────────────┘
 ```
 
@@ -85,14 +88,16 @@ This makes AI coding agents usable from orchestration tools like **n8n**, **Temp
 
 1. Clone the repository to a workspace
 2. Create a new branch from the specified ref
-3. Run the CLI agent with your prompt (e.g., `cursor agent --resume`)
+3. Open (or load) an ACP session and send your prompt; progress is streamed to `/agents/{id}/stream`
 4. Check if the agent made changes
 5. Generate a commit message via the agent
 6. Commit and push to the branch
 7. Generate a PR title and body via the agent
 8. Create a pull request on GitHub
 
-**Resume flow:** Send a follow-up prompt to an existing agent — it checks out the branch, runs the agent again, and pushes new changes.
+**Resume flow:** Send a follow-up prompt to an existing agent — it checks out the branch, reloads the agent's ACP session (`session/load`) so the conversation continues, and pushes new changes.
+
+`/agents/create` and `/agents/resume` return immediately; the run continues in the background. Connect to `/agents/{id}/stream` to follow it live — a client that connects late still receives the whole run from the start.
 
 ---
 
@@ -106,9 +111,9 @@ This makes AI coding agents usable from orchestration tools like **n8n**, **Temp
                    │ HTTP (Ktor Client)
 ┌──────────────────▼──────────────────────────┐
 │           server (Ktor Backend)             │
-│  Routes: Agent · Shell · GitHub             │
-│  CLI: AgentCli · GitCli · GitHubCli ·       │
-│       ShellRunner · FileCli · SqlLiteCli    │
+│  Routes: Agent · Shell · GitHub · MCP       │
+│  CLI: AgentCli · AcpAgent · GitCli ·        │
+│       GitHubCli · ShellRunner · FileCli     │
 │  DI: Koin  ·  FP: Arrow                    │
 └──────────────────┬──────────────────────────┘
                    │ JDBC (Exposed + Flyway)
@@ -125,33 +130,43 @@ This makes AI coding agents usable from orchestration tools like **n8n**, **Temp
 
 ### Provider System
 
-New CLI agents are added by implementing the `AgentCli` interface and registering in `DefaultAgentProviderFactory`:
+All chat, history and model operations go through the [Agent Client Protocol](https://agentclientprotocol.com). A provider only supplies the command that starts its ACP agent plus the account/file operations ACP doesn't cover:
 
 ```kotlin
 interface AgentCli {
+    val acp: AcpAgent  // chat, history, models over ACP
+
     suspend fun login(): Either<AppError, ShellResult>
-    suspend fun models(): Either<AppError, List<String>>
-    suspend fun createChat(): Either<AppError, ShellResult>
-    suspend fun resumeChat(id: String, prompt: String, model: String): Either<AppError, ShellResult>
-    suspend fun prompt(id: String, prompt: String): Either<AppError, ShellResult>
-    // ...
+    suspend fun logout(): Either<AppError, ShellResult>
+    suspend fun status(): Either<AppError, ShellResult>
+    suspend fun listChats(): Either<AppError, List<String>>
+    suspend fun clear()
 }
 ```
 
-Currently supported: **Cursor**. Next: **Claude Code**, **Cline**.
+New providers implement `AgentCli` and register in `DefaultAgentProviderFactory`.
+
+| Provider | ACP agent command |
+|----------|-------------------|
+| **Cursor** | `agent acp` (built into Cursor CLI) |
+| **Claude Code** | `npx -y @agentclientprotocol/claude-agent-acp` (official adapter) |
+
+Next: **Cline**.
+
+The ACP client lives in `server/cli/acp`: `AcpConnection` handles JSON-RPC 2.0 over the agent's stdio (permission requests are auto-approved), and `AcpAgent` exposes `prompt`, `history`, `ask` and `models` on top of it. Requests and responses are typed `@Serializable` data classes, and method names come from the `AcpMethod` enum.
 
 ### Modules
 
 | Module | Path | Purpose |
 |--------|------|---------|
 | `composeApp` | `/composeApp` | Compose Multiplatform web frontend (JS + Wasm) |
-| `server` | `/server` | Ktor REST API with agent, shell, and GitHub features |
+| `server` | `/server` | Ktor REST API with agent, shell, GitHub, and MCP features |
 | `shared` | `/shared` | Kotlin Multiplatform shared DTOs, enums, and data models |
 | `docs` | `/docs` | Auto-generated Swagger/OpenAPI documentation |
 
 ### Server Layering
 
-The server follows a **Route → Service → Repository/CLI** pattern. Each feature domain (Agent, Shell, GitHub) is self-contained with its own route, service, and data access layer.
+The server follows a **Route → Service → Repository/CLI** pattern. Each feature domain (Agent, Shell, GitHub, MCP) is self-contained with its own route, service, and data access layer.
 
 ---
 
@@ -166,12 +181,17 @@ The server follows a **Route → Service → Repository/CLI** pattern. Each feat
 | `POST` | `/agents/create` | Create an agent: clone repo, run CLI agent, push & open PR |
 | `POST` | `/agents/resume` | Resume an agent with a follow-up prompt |
 | `GET` | `/agents/list` | List all agents |
-| `GET` | `/agents/{id}` | Get agent detail with chat messages |
+| `GET` | `/agents/{id}` | Get agent detail with chat history (replayed from the ACP session) |
+| `GET` | `/agents/{id}/stream` | Server-Sent Events stream of the agent's run (`AgentStreamEvent`) |
 | `GET` | `/agents/status?provider=Cursor` | Check agent provider auth status |
 | `GET` | `/agents/login?provider=Cursor` | Log in to agent provider |
 | `GET` | `/agents/logout?provider=Cursor` | Log out from agent provider |
 | `GET` | `/agents/models?provider=Cursor` | List available models |
 | `GET` | `/agents/clear` | Clear all agents |
+
+`provider` is `Cursor` or `Claude`.
+
+**Stream events** (`AgentStreamEvent`): `Update` (an ACP `session/update`: message/thought chunks, tool calls), `TurnStarted`, `TurnEnded` (with the ACP `stopReason`), `Error`, and `Done` (the run, including commit/push/PR, has finished).
 
 ### Shell Endpoints — `/shell`
 
@@ -191,16 +211,28 @@ The server follows a **Route → Service → Repository/CLI** pattern. Each feat
 | `POST` | `/github/branch` | Search branches for a repository |
 | `GET` | `/github/token` | Get GitHub auth token |
 
+### MCP Endpoints — `/mcp`
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/mcp` | Get the MCP configuration |
+| `PUT` | `/mcp` | Replace the MCP configuration |
+| `POST` | `/mcp/servers` | Add or update an MCP server |
+| `DELETE` | `/mcp/servers/{name}` | Remove an MCP server |
+
+The configuration is stored in `~/.agentspawn/mcp.json` and passed to Claude Code in ACP `session/new` / `session/load`; it is also written to `~/.cursor/mcp.json`, which Cursor reads itself.
+
 ---
 
 ## Roadmap
 
-- [ ] **Claude Code provider** — `AgentCli` implementation for Claude Code CLI
+- [x] **Claude Code provider** — Claude Code over the official ACP adapter
+- [x] **Agent Client Protocol** — All providers driven over ACP
 - [ ] **Cline provider** — `AgentCli` implementation for Cline CLI
-- [ ] **MCP support** — Pluggable Model Context Protocol servers per agent
+- [x] **MCP support** — Pluggable Model Context Protocol servers
 - [ ] **Skills & Rules** — Configurable agent skills and rule sets
 - [ ] **Codebase Indexing** — Index repositories for cheaper, context-aware agent usage
-- [ ] **WebSocket streaming** — Real-time agent output streaming
+- [x] **Live streaming** — Real-time agent output over Server-Sent Events
 - [ ] **Multi-user support** — Role-based access control
 - [ ] **Task queue & scheduling** — Queue and schedule agent tasks
 - [ ] **Dashboard analytics** — Token usage, success rates, agent performance
@@ -214,7 +246,8 @@ The server follows a **Route → Service → Repository/CLI** pattern. Each feat
 - **JDK 23+** (Eclipse Temurin recommended)
 - **Docker** (optional, for containerized deployment)
 - **PostgreSQL 17** (or use Docker Compose)
-- **Cursor CLI** (for the Cursor provider)
+- **Cursor CLI** (for the Cursor provider; provides `agent acp`)
+- **Claude Code** + **Node.js / npx** (for the Claude provider; the ACP adapter runs via `npx`)
 - Gradle wrapper is included — no separate installation needed
 
 ### Quick Start with Docker Compose
@@ -289,10 +322,12 @@ AgentSpawn/
 │   ├── features/
 │   │   ├── agent/             # Agent CRUD & lifecycle
 │   │   ├── shell/             # Shell command execution
-│   │   └── github/            # GitHub integration
+│   │   ├── github/            # GitHub integration
+│   │   └── mcp/               # MCP server configuration
 │   ├── cli/                   # CLI abstractions
+│   │   ├── acp/               # Agent Client Protocol client (JSON-RPC over stdio)
 │   │   ├── agent/             # AgentCli interface & factory
-│   │   └── providers/         # Provider implementations (Cursor)
+│   │   └── providers/         # Provider implementations (Cursor, Claude)
 │   ├── configs/               # Ktor plugin configurations
 │   └── resources/             # application.conf, Flyway migrations
 ├── shared/                    # KMP Shared Models

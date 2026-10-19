@@ -198,6 +198,7 @@
   <li><a href="#agentsClearGet"><code><span class="http-method">get</span> /agents/clear</code></a></li>
   <li><a href="#agentsCreatePost"><code><span class="http-method">post</span> /agents/create</code></a></li>
   <li><a href="#agentsIdGet"><code><span class="http-method">get</span> /agents/{id}</code></a></li>
+  <li><a href="#agentsIdStreamGet"><code><span class="http-method">get</span> /agents/{id}/stream</code></a></li>
   <li><a href="#agentsListGet"><code><span class="http-method">get</span> /agents/list</code></a></li>
   <li><a href="#agentsLoginGet"><code><span class="http-method">get</span> /agents/login</code></a></li>
   <li><a href="#agentsLogoutGet"><code><span class="http-method">get</span> /agents/logout</code></a></li>
@@ -300,6 +301,7 @@
   "provider" : "",
   "branchName" : "",
   "id" : "",
+  "sessionId" : "",
   "title" : "",
   "repository" : "",
   "status" : ""
@@ -348,7 +350,7 @@
     <div class="example-data-content-type">Content-Type: application/json</div>
     <pre class="example"><code>{
   "chatId" : "",
-  "messages" : "",
+  "updates" : "",
   "repository" : "",
   "branch" : "",
   "status" : ""
@@ -365,6 +367,32 @@
     <h4 class="field-label">200</h4>
     
         <a href="#AgentContentDto">AgentContentDto</a>
+  </div> <!-- method -->
+  <hr/>
+  <div class="method"><a name="agentsIdStreamGet"></a>
+    <div class="method-path">
+    <a class="up" href="#__Methods">Up</a>
+    <pre class="get"><code class="huge"><span class="http-method">get</span> /agents/{id}/stream</code></pre></div>
+    <div class="method-summary"> (<span class="nickname">agentsIdStreamGet</span>)</div>
+    <div class="method-notes"></div>
+
+    <h3 class="field-label">Path parameters</h3>
+    <div class="field-items">
+      <div class="param">id (required)</div>
+      
+            <div class="param-desc"><span class="param-type">Path Parameter</span> &mdash;  </div>    </div>  <!-- field-items -->
+
+
+
+
+
+
+
+    <!--Todo: process Response Object and its headers, schema, examples -->
+
+
+
+    <h3 class="field-label">Responses</h3>
   </div> <!-- method -->
   <hr/>
   <div class="method"><a name="agentsListGet"></a>
@@ -574,6 +602,7 @@
   "provider" : "",
   "branchName" : "",
   "id" : "",
+  "sessionId" : "",
   "title" : "",
   "repository" : "",
   "status" : ""
@@ -1279,7 +1308,7 @@
     
     <div class="field-items">
       <div class="param">chatId </div><div class="param-desc"><span class="param-type"><a href="#"></a></span>  </div>
-<div class="param">messages </div><div class="param-desc"><span class="param-type"><a href="#"></a></span>  </div>
+<div class="param">updates </div><div class="param-desc"><span class="param-type"><a href="#"></a></span>  </div>
 <div class="param">status </div><div class="param-desc"><span class="param-type"><a href="#"></a></span>  </div>
 <div class="param">repository </div><div class="param-desc"><span class="param-type"><a href="#"></a></span>  </div>
 <div class="param">branch </div><div class="param-desc"><span class="param-type"><a href="#"></a></span>  </div>
@@ -1297,6 +1326,7 @@
 <div class="param">repository </div><div class="param-desc"><span class="param-type"><a href="#"></a></span>  </div>
 <div class="param">provider </div><div class="param-desc"><span class="param-type"><a href="#"></a></span>  </div>
 <div class="param">lastModel </div><div class="param-desc"><span class="param-type"><a href="#"></a></span>  </div>
+<div class="param">sessionId (optional)</div><div class="param-desc"><span class="param-type"><a href="#"></a></span>  </div>
     </div>  <!-- field-items -->
   </div>
   <div class="model">

@@ -6,6 +6,7 @@
 package org.enciyo.agentspawn
 
 import io.github.smiley4.ktorredoc.redoc
+import io.ktor.server.sse.SSE
 import io.ktor.http.*
 import io.ktor.server.application.*
 import io.ktor.server.auth.*
@@ -52,6 +53,7 @@ private fun Application.configurePlugins(appConfig: AppConfig) {
     install(CORS) { handle() }
     install(RequestValidation) { handle() }
     install(StatusPages) { handle() }
+    install(SSE)
     if (appConfig.isAuthEnable) {
         install(Authentication) { handle(appConfig) }
     }
@@ -123,6 +125,7 @@ private fun Application.configureDatabases(appConfig: AppConfig) {
     Flyway.configure()
         .dataSource(jdbcUrl, user, password)
         .locations("classpath:db/migration")
+        .ignoreMigrationPatterns("*:missing", "*:future")
         .load()
         .migrate()
 

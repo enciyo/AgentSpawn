@@ -14,4 +14,7 @@ object AgentTable : IntIdTable("agent") {
     val provider = varchar("provider", 255)
     val status = varchar("status", 50).default("PENDING")
     val lastModel = varchar("lastModel", 255).nullable()
+
+    /** The agent's ACP session id; assigned via session/new on the first run. */
+    val sessionId = varchar("sessionId", 255).nullable()
 }

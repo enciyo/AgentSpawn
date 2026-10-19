@@ -32,7 +32,6 @@ class ChatViewModel(
     }
 
     private fun loadInitialData() {
-        pollAgents()
         loadModels(selectedAgentProvider)
         loadRepositories()
     }
@@ -41,13 +40,13 @@ class ChatViewModel(
     private fun observeSearchQueries() {
         viewModelScope.launch {
             repoSearchFlow
-                .debounce(150)
+                .debounce(SEARCH_DEBOUNCE_MS)
                 .drop(1)
                 .collectLatest { query -> loadRepositories(query, autoSelect = false) }
         }
         viewModelScope.launch {
             branchSearchFlow
-                .debounce(150)
+                .debounce(SEARCH_DEBOUNCE_MS)
                 .drop(1)
                 .collectLatest { query -> loadBranches(query, autoSelect = false) }
         }
@@ -119,20 +118,36 @@ class ChatViewModel(
         }
     }
 
+    /** Polls the agent list while the tab is visible; no requests are made while it is hidden. */
+    fun onVisibilityChanged(isVisible: Boolean) {
+        if (isVisible) pollAgents() else cancel(KEY_AGENTS)
+    }
+
     private fun pollAgents() {
-        poll(KEY_AGENTS, 10_000) {
+        poll(KEY_AGENTS, AGENTS_POLL_MS) {
             updateDrawer { copy(isLoading = providerGroups.isEmpty() && agents.isEmpty()) }
             refreshProviderGroups()
         }
     }
 
     /**
-     * Login olmuş provider status'larını paralel çeker, tek list ile chat'leri
-     * provider'a göre gruplar. Henüz wire edilmemiş katalog provider'ları da section olarak gelir.
+     * Login status is checked once per session since each check starts a CLI process;
+     * later rounds only fetch the agent list (from the DB).
+     */
+    private var loggedInIds: Set<String>? = null
+
+    /**
+     * Groups chats by provider using a single list.
+     * Catalog providers that aren't wired up yet also come through as sections.
      */
     private suspend fun refreshProviderGroups() {
+        val ids = loggedInIds ?: fetchLoggedInProviders().also { loggedInIds = it }
+        listAgentsInto(ids)
+    }
+
+    private suspend fun fetchLoggedInProviders(): Set<String> {
         val wiredProviders = ProviderCatalog.all.mapNotNull { it.agentProvider }
-        val loggedInIds = coroutineScope {
+        return coroutineScope {
             wiredProviders
                 .map { provider ->
                     async {
@@ -149,7 +164,9 @@ class ChatViewModel(
                 .map { it.first }
                 .toSet()
         }
+    }
 
+    private suspend fun listAgentsInto(loggedInIds: Set<String>) {
         client.listAgents(selectedAgentProvider)
             .onRight { chats ->
                 val groups = ProviderCatalog.all.map { info ->
@@ -189,30 +206,79 @@ class ChatViewModel(
             }
     }
 
-    private fun pollAgent(id: String) {
-        poll(KEY_AGENT) {
-            client.getAgent(id)
-                .onRight {
-                    updateMessage { copy(messages = it.messages.reversed(), status = it.status, isLoading = false) }
-                    updateInput {
-                        val updated = copy(
-                            selectedRepository = it.repository,
-                            selectedBranch = it.branch,
-                            isEnabled = it.status.isActive.not()
-                        )
-                        if (isPending && it.status.isActive.not()) {
-                            updated.copy(isEnabled = true, text = "", isPending = false)
-                        } else {
-                            updated
-                        }
-                    }
-
-                }
-                .onLeft {
-                    updateMessage { copy(errorMessage = it.message, status = AgentStatus.FAILED, isLoading = false) }
-                }
+    /** Fetches history once; connects to the live stream if the agent is still running. */
+    private fun loadAgent(id: String) {
+        relaunch(KEY_AGENT) {
+            val content = fetchAgent(id) ?: return@relaunch
+            if (content.status.isActive) streamAgent(id)
         }
     }
+
+    /** Streams the run live after create/resume. */
+    private fun startStream(id: String) {
+        relaunch(KEY_AGENT) {
+            streamAgent(id)
+        }
+    }
+
+    /**
+     * The run stream starts by replaying the full history via `session/load`. The replay is collected silently;
+     * from [AgentStreamEvent.TurnStarted] on, the screen updates live, so existing messages aren't cleared and refilled.
+     */
+    private suspend fun streamAgent(id: String) {
+        var transcript = ChatTranscript()
+        var isLive = false
+        client.streamAgent(id)
+            .catch { emitError(it) }
+            .collect { event ->
+                when (event) {
+                    is AgentStreamEvent.Update -> transcript = transcript.reduce(event.update)
+                    is AgentStreamEvent.TurnStarted -> isLive = true
+                    is AgentStreamEvent.Error -> _event.emit(ChatEvent.ShowError(event.message))
+                    is AgentStreamEvent.TurnEnded,
+                    is AgentStreamEvent.Done -> Unit
+                }
+                if (!isLive) return@collect
+                updateMessage {
+                    copy(
+                        messages = transcript.messages.reversed(),
+                        status = (event as? AgentStreamEvent.Done)?.status ?: AgentStatus.RUNNING,
+                        isLoading = false,
+                    )
+                }
+            }
+        // Run finished (or connection dropped): sync with the authoritative history and status
+        fetchAgent(id)
+    }
+
+    private suspend fun fetchAgent(id: String): AgentContentDto? =
+        client.getAgent(id)
+            .onRight {
+                // A running agent's history comes from the stream; show loading until then
+                if (it.status.isActive) {
+                    updateMessage { copy(status = it.status, isLoading = messages.isEmpty()) }
+                } else {
+                    updateMessage {
+                        copy(messages = it.updates.toTranscript().messages.reversed(), status = it.status, isLoading = false)
+                    }
+                }
+                updateInput {
+                    val updated = copy(
+                        selectedRepository = it.repository,
+                        selectedBranch = it.branch,
+                        isEnabled = it.status.isActive.not()
+                    )
+                    if (isPending && it.status.isActive.not()) {
+                        updated.copy(isEnabled = true, text = "", isPending = false)
+                    } else {
+                        updated
+                    }
+                }
+            }
+            .onLeft {
+                updateMessage { copy(errorMessage = it.message, status = AgentStatus.FAILED, isLoading = false) }
+            }
+            .getOrNull()
 
     fun onAgent(agent: AgentDto) {
         if (agent.id == state.value.drawer.selectedAgentId) return
@@ -235,21 +301,21 @@ class ChatViewModel(
         }
         cancel(KEY_REPOS)
         cancel(KEY_BRANCHES)
-        pollAgent(agent.id)
+        loadAgent(agent.id)
     }
 
     fun onSelectProvider(providerId: String) {
         val info = ProviderCatalog.byId(providerId) ?: return
         if (!info.isWired) {
             viewModelScope.launch {
-                _event.emit(ChatEvent.ShowError("${info.displayName} henüz bağlanmadı."))
+                _event.emit(ChatEvent.ShowError("${info.displayName} is not connected yet."))
             }
             return
         }
         val group = state.value.drawer.providerGroups.find { it.provider.id == providerId }
         if (group != null && !group.isLoggedIn) {
             viewModelScope.launch {
-                _event.emit(ChatEvent.ShowError("${info.displayName} için giriş yapılmamış."))
+                _event.emit(ChatEvent.ShowError("${info.displayName}: not logged in."))
             }
             return
         }
@@ -426,7 +492,7 @@ class ChatViewModel(
             val provider = state.value.drawer.selectedProvider
             val apiProvider = provider.agentProvider
             if (apiProvider == null) {
-                _event.emit(ChatEvent.ShowError("${provider.displayName} henüz bağlanmadı."))
+                _event.emit(ChatEvent.ShowError("${provider.displayName} is not connected yet."))
                 return@launch
             }
 
@@ -474,7 +540,7 @@ class ChatViewModel(
                     providerGroups = updatedGroups,
                 )
             }
-            pollAgent(agent.id)
+            startStream(agent.id)
         }
         onLeft {
             emitError(it)
@@ -536,5 +602,7 @@ class ChatViewModel(
         private const val KEY_BRANCHES = "branches"
         private const val KEY_AGENTS = "agents"
         private const val KEY_AGENT = "agent"
+        private const val AGENTS_POLL_MS = 15_000L
+        private const val SEARCH_DEBOUNCE_MS = 400L
     }
 }

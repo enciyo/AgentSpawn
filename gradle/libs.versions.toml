@@ -51,6 +51,7 @@ ktor-auth = { module = "io.ktor:ktor-server-auth", version.ref = "ktor" }
 ktor-authApiKey = { module = "io.ktor:ktor-server-auth-api-key", version.ref = "ktor" }
 ktor-hostCommon = { module = "io.ktor:ktor-server-host-common", version.ref = "ktor" }
 ktor-statusPages = { module = "io.ktor:ktor-server-status-pages", version.ref = "ktor" }
+ktor-serverSse = { module = "io.ktor:ktor-server-sse", version.ref = "ktor" }
 ktor-redoc = { module = "io.github.smiley4:ktor-redoc", version = "5.6.0" }
 kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version = "1.10.0" }
 # Ktor Client (KMP)

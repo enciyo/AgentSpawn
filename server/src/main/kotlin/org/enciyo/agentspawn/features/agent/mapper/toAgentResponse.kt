@@ -12,5 +12,6 @@ fun AgentDao.toAgentDto() = AgentDto(
     branchName = this.branchName,
     ref = this.ref,
     repository = this.repository,
-    lastModel = this.lastModel.orEmpty()
+    lastModel = this.lastModel.orEmpty(),
+    sessionId = this.sessionId,
 )

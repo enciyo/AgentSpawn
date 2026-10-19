@@ -21,6 +21,7 @@ interface AgentRepository {
     suspend fun removeAgens(ids: List<String>)
     suspend fun update(copy: AgentDto): AgentDto
     suspend fun updateStatus(chatId: String, status: AgentStatus): AgentDto
+    suspend fun updateSessionId(chatId: String, sessionId: String)
 }
 
 class AgentRepositoryImpl : AgentRepository {
@@ -76,4 +77,12 @@ class AgentRepositoryImpl : AgentRepository {
                 ?.toAgentDto()
                 ?: throw IllegalArgumentException("Agent with chatId $chatId not found")
         }
+
+    override suspend fun updateSessionId(chatId: String, sessionId: String) {
+        suspendTransaction {
+            AgentDao.findSingleByAndUpdate(AgentTable.chatId eq chatId) {
+                it.sessionId = sessionId
+            }
+        }
+    }
 }

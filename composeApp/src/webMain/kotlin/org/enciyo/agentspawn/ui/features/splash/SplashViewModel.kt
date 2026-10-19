@@ -13,15 +13,22 @@ import org.enciyo.agentspawn.data.Client
 import kotlin.time.Duration.Companion.milliseconds
 
 data class SplashUiState(
-    val isLoading: Boolean = true,
-    val selectedProvider: AgentProvider = AgentProvider.Cursor,
-    val providers: List<AgentProvider> = AgentProvider.entries,
-    val loggedMail: String? = null,
+    val providerStates: Map<AgentProvider, ProviderState> = AgentProvider.entries.associateWith { ProviderState() },
     val errorMessage: String? = null,
     val githubState: GithubState = GithubState(),
 ) {
-    val isLoggedIn: Boolean get() = !loggedMail.isNullOrEmpty()
+    val isLoading: Boolean get() = providerStates.values.any { it.isLoading }
+    val isLoggedIn: Boolean get() = providerStates.values.any { it.isLoggedIn }
     val isGithubConnected: Boolean get() = githubState.connected
+
+    fun provider(provider: AgentProvider): ProviderState = providerStates[provider] ?: ProviderState()
+}
+
+data class ProviderState(
+    val isLoading: Boolean = true,
+    val loggedMail: String? = null,
+) {
+    val isLoggedIn: Boolean get() = !loggedMail.isNullOrEmpty()
 }
 
 data class GithubState(
@@ -48,62 +55,64 @@ class SplashViewModel(
     val events: SharedFlow<SplashEvent> = _events.asSharedFlow()
 
     private var githubPollJob: Job? = null
-    private var cursorPollJob: Job? = null
-
-    private val selectedProvider get() = state.value.selectedProvider
+    private val agentPollJobs = mutableMapOf<AgentProvider, Job>()
 
     init {
-        fetchStatus()
+        AgentProvider.entries.forEach(::fetchStatus)
         fetchGithubToken()
     }
 
-    fun onSelectProvider(provider: AgentProvider) {
-        _state.update { it.copy(selectedProvider = provider, isLoading = true) }
-        fetchStatus()
-    }
-
-    fun onProviderToggle() {
-        if (state.value.isLoggedIn) logoutAgent() else loginAgent()
+    fun onProviderToggle(provider: AgentProvider) {
+        if (state.value.provider(provider).isLoggedIn) logoutAgent(provider) else loginAgent(provider)
     }
 
     fun onNavigateToChatClick() {
         viewModelScope.launch { _events.emit(SplashEvent.NavigateToChat) }
     }
 
-    private fun fetchStatus() {
+    private fun fetchStatus(provider: AgentProvider) {
         execute(
-            call = { client.statusAgent(selectedProvider) },
+            call = { client.statusAgent(provider) },
             onSuccess = { result ->
-                _state.update { it.copy(loggedMail = result.output, errorMessage = null, isLoading = false) }
+                updateProvider(provider) { copy(loggedMail = result.output, isLoading = false) }
             },
-            onError = { e ->
-                _state.update { it.copy(loggedMail = null, errorMessage = e.message.orEmpty(), isLoading = false) }
-            },
+            // Not being logged in isn't an error; it's just shown as not connected
+            onError = { updateProvider(provider) { copy(loggedMail = null, isLoading = false) } },
         )
     }
 
-    private fun loginAgent() {
-        _state.update { it.copy(isLoading = true, errorMessage = null) }
+    private fun loginAgent(provider: AgentProvider) {
+        updateProvider(provider) { copy(isLoading = true) }
+        _state.update { it.copy(errorMessage = null) }
         execute(
-            call = { client.loginAgent(selectedProvider) },
+            call = { client.loginAgent(provider) },
             onSuccess = {
-                pollUntil(timeoutMessage = "${selectedProvider.name} girişi zaman aşımına uğradı.") {
-                    client.statusAgent(selectedProvider).getOrNull()?.output.orEmpty().isNotEmpty()
+                agentPollJobs[provider]?.cancel()
+                pollUntil(timeoutMessage = "${provider.name} login timed out.") {
+                    client.statusAgent(provider).getOrNull()?.output.orEmpty().isNotEmpty()
                 }
-                    .also { cursorPollJob = it }
-                    .invokeOnCompletion { fetchStatus() }
+                    .also { agentPollJobs[provider] = it }
+                    .invokeOnCompletion { fetchStatus(provider) }
             },
             onError = { e ->
-                _state.update { it.copy(isLoading = false, errorMessage = e.message) }
+                updateProvider(provider) { copy(isLoading = false) }
+                _state.update { it.copy(errorMessage = e.message) }
             },
         )
     }
 
-    private fun logoutAgent() {
+    private fun logoutAgent(provider: AgentProvider) {
         execute(
-            call = { client.logoutAgent(selectedProvider) },
-            onSuccess = { _state.update { it.copy(loggedMail = null, errorMessage = null) } },
+            call = { client.logoutAgent(provider) },
+            onSuccess = {
+                updateProvider(provider) { copy(loggedMail = null) }
+                _state.update { it.copy(errorMessage = null) }
+            },
         )
+    }
+
+    private fun updateProvider(provider: AgentProvider, block: ProviderState.() -> ProviderState) {
+        _state.update { it.copy(providerStates = it.providerStates + (provider to it.provider(provider).block())) }
     }
 
     fun onGithubApiKeyChange(value: String) {
@@ -142,10 +151,10 @@ class SplashViewModel(
             call = { client.loginGithub() },
             onSuccess = { result ->
                 updateGithub { copy(code = result.code, redirect = result.openUrl, isLoading = true) }
-                pollUntil(timeoutMessage = "GitHub girişi zaman aşımına uğradı.") {
+                pollUntil(timeoutMessage = "GitHub login timed out.") {
                     client.tokenGithub().getOrNull().orEmpty().isNotEmpty()
                 }
-                    .also { githubPollJob = it }
+                    .also { githubPollJob?.cancel(); githubPollJob = it }
                     .invokeOnCompletion { cause ->
                         if (cause == null) fetchGithubToken()
                     }
@@ -161,7 +170,7 @@ class SplashViewModel(
         execute(
             call = { client.logoutGithub() },
             onSuccess = {
-                _state.update { it.copy(githubState = GithubState(), errorMessage = null, isLoading = false) }
+                _state.update { it.copy(githubState = GithubState(), errorMessage = null) }
             },
             onError = { e ->
                 updateGithub { copy(isLoading = false) }
@@ -182,14 +191,13 @@ class SplashViewModel(
         viewModelScope.launch { call().fold(onError, onSuccess) }
     }
 
+    // Each poll starts a CLI process (status); 2 s × 45 = 90 s wait
     private fun pollUntil(
-        intervalMs: Long = 1000,
-        maxAttempts: Int = 90,
+        intervalMs: Long = 2000,
+        maxAttempts: Int = 45,
         timeoutMessage: String,
         condition: suspend () -> Boolean,
     ): Job {
-        githubPollJob?.cancel()
-        cursorPollJob?.cancel()
         return viewModelScope.launch {
             repeat(maxAttempts) {
                 if (!isActive) return@launch

@@ -4,22 +4,31 @@ import arrow.core.Either
 import arrow.core.getOrElse
 import arrow.core.raise.either
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
 import org.enciyo.agentspawn.AppError
+import org.enciyo.agentspawn.TtlCache
 import org.enciyo.agentspawn.api.AgentContentDto
 import org.enciyo.agentspawn.api.AgentDto
 import org.enciyo.agentspawn.api.AgentProvider
 import org.enciyo.agentspawn.api.AgentStatus
+import org.enciyo.agentspawn.api.AgentStreamEvent
 import org.enciyo.agentspawn.api.CreateAgentRequest
 import org.enciyo.agentspawn.api.ResumeAgentRequest
+import org.enciyo.agentspawn.api.ShellResult
+import org.enciyo.agentspawn.api.acp.SessionUpdate
+import org.enciyo.agentspawn.cli.Folders
 import org.enciyo.agentspawn.cli.Prompt
 import org.enciyo.agentspawn.cli.agent.AgentCli
 import org.enciyo.agentspawn.cli.agent.AgentProviderFactory
 import org.enciyo.agentspawn.cli.agent.provide
-import org.enciyo.agentspawn.features.agent.mapper.toAgentContentDto
 import org.enciyo.agentspawn.features.agent.model.Agent
 import org.enciyo.agentspawn.features.github.GithubService
 import java.util.UUID
+import kotlin.time.Duration.Companion.hours
+import kotlin.time.Duration.Companion.minutes
 
 
 class AgentService(
@@ -27,24 +36,34 @@ class AgentService(
     scope: CoroutineScope,
     private val agentRepository: AgentRepository,
     private val githubService: GithubService,
+    private val streamHub: AgentStreamHub,
 ) : AgentProviderFactory by providerFactory, CoroutineScope by scope {
+
+    // Each one starts a CLI/ACP process; cached for a while since the frontend asks often
+    private val statusCache = TtlCache<String, ShellResult>(1.minutes)
+    private val modelsCache = TtlCache<String, List<String>>(30.minutes)
+    private val historyCache = TtlCache<String, List<SessionUpdate>>(1.hours)
 
     init {
         sync()
     }
 
+    /** Removes agents whose session was deleted on the provider from the DB; each provider is compared against its own session list. */
     fun sync() {
         launch {
-            val allAgents = agentRepository.allAgents()
-            if (allAgents.isEmpty()) return@launch
-            val cursor = AgentProvider.Cursor.name.provide()
-            // list fail veya boş → wipe yapma (önceden getOrElse { emptyList } tüm DB'yi siliyordu)
-            val agentsChats = cursor.listChats().getOrElse { return@launch }
-            if (agentsChats.isEmpty()) return@launch
-            val toRemove = allAgents.filterNot { agentsChats.contains(it.id) }
-            if (toRemove.isNotEmpty()) {
-                agentRepository.removeAgens(toRemove.map { it.id })
-            }
+            agentRepository.allAgents()
+                .filterNot { it.status.isActive }
+                .groupBy { it.provider }
+                .forEach { (provider, agents) ->
+                    val cli = runCatching { provider.provide() }.getOrNull() ?: return@forEach
+                    // list failed or empty → don't wipe
+                    val sessions = cli.listChats().getOrElse { return@forEach }
+                    if (sessions.isEmpty()) return@forEach
+                    val toRemove = agents.filterNot { it.sessionKey in sessions }
+                    if (toRemove.isNotEmpty()) {
+                        agentRepository.removeAgens(toRemove.map { it.id })
+                    }
+                }
         }
     }
 
@@ -64,13 +83,19 @@ class AgentService(
         }
     }
 
+    /** Returns empty history while the agent is running; the run's stream already carries it via the `session/load` replay. */
     suspend fun agentById(id: String): Either<AppError, AgentContentDto> = either {
         val agent = agentRepository.agentById(id) ?: raise(AppError.NotFound("Agent not found: $id"))
-        val provider = agent.provider.provide()
-        val messages = provider.getChatContent(id).getOrNull()?.toAgentContentDto()
+        val updates = when {
+            agent.status.isActive -> emptyList()
+            else -> streamHub.lastRun(id)
+                ?: historyCache.getOrLoad(id) { acp { agent.provider.provide().acp.history(projectDir(id), agent.sessionKey) } }
+                    .onLeft { println("[ACP] history unavailable for $id: ${it.message}") }
+                    .getOrElse { emptyList() }
+        }
         AgentContentDto(
             chatId = agent.id,
-            messages = messages ?: emptyList(),
+            updates = updates,
             status = agent.status,
             repository = agent.repository,
             branch = agent.branchName
@@ -90,10 +115,8 @@ class AgentService(
             lastModel = request.model
         )
         val saved = agentRepository.addAgent(agent)
-        launch {
-            agentRepository.updateStatus(saved.id, AgentStatus.RUNNING)
+        launchRun(saved.id) {
             provision(saved.id, request)
-            agentRepository.updateStatus(saved.id, AgentStatus.COMPLETED)
         }
         saved
     }
@@ -106,77 +129,142 @@ class AgentService(
         val isPushed = resumeProvision(
             provider = provider,
             chatId = chatId,
+            sessionId = null,
             prompt = request.prompt,
             branchName = request.branchName,
             ref = request.ref,
             model = request.model,
         ).bind()
         if (isPushed.not()) return@either null
-        val pushBody = provider.prompt(id = chatId, prompt = Prompt.generatePullRequestBodyPrompt).bind()
-        val title = provider.prompt(id = chatId, prompt = Prompt.generatePullRequestTitlePrompt).bind()
+        val pushBody = acp { provider.acp.ask(projectDir(chatId), Prompt.generatePullRequestBodyPrompt, ONE_OFF_MODEL) }.bind()
+        val title = acp { provider.acp.ask(projectDir(chatId), Prompt.generatePullRequestTitlePrompt, ONE_OFF_MODEL) }.bind()
         githubService.createPullRequest(
             repoUrl = request.repository,
-            title = title.output,
-            body = pushBody.output,
+            title = title,
+            body = pushBody,
             head = request.branchName,
             base = request.ref
         )
-    }.onLeft {
-        agentRepository.updateStatus(chatId, AgentStatus.FAILED)
     }
 
     private suspend fun resumeProvision(
         provider: AgentCli,
         chatId: String,
+        sessionId: String?,
         prompt: String,
         branchName: String,
         ref: String,
         model: String
     ) = either {
         githubService.checkout(id = chatId, branch = branchName, ref = ref).bind()
-        provider.resumeChat(chatId, prompt, model).bind()
+        runAgent(provider, chatId, sessionId, prompt, model).bind()
         val hasChangeList = githubService.hasChangelist(chatId).bind()
         if (!hasChangeList) return@either false
-        val commitMessage = provider.prompt(chatId, Prompt.generateCommitMessagePrompt).bind()
-        githubService.push(id = chatId, message = commitMessage.output, branch = branchName).bind()
+        val commitMessage = acp { provider.acp.ask(projectDir(chatId), Prompt.generateCommitMessagePrompt, ONE_OFF_MODEL) }.bind()
+        githubService.push(id = chatId, message = commitMessage, branch = branchName).bind()
         true
     }
-        .onLeft {
-            agentRepository.updateStatus(chatId, AgentStatus.FAILED)
-        }
-
 
     suspend fun resume(request: ResumeAgentRequest) = either {
         val agent = agentRepository.agentById(request.id) ?: raise(AppError.NotFound("Agent not found: ${request.id}"))
         if (agent.status.isActive) raise(AppError.Conflict("Agent is already running: ${request.id}"))
-        launch {
-            agentRepository.updateStatus(agent.id, AgentStatus.RUNNING)
+        launchRun(agent.id) {
             resumeProvision(
                 provider = agent.provider.provide(),
                 chatId = agent.id,
+                sessionId = agent.sessionKey,
                 prompt = request.prompt,
                 branchName = agent.branchName,
                 ref = agent.ref,
                 model = request.model.ifEmpty { agent.lastModel },
             )
-            agentRepository.updateStatus(agent.id, AgentStatus.COMPLETED)
         }
         agent.copy(status = AgentStatus.RUNNING)
     }
 
-    suspend fun logout(provider: String) = provider.provide().logout()
+    /** Emits the active run's events if there is one, otherwise only the latest status. */
+    suspend fun stream(id: String): Either<AppError, Flow<AgentStreamEvent>> = either {
+        streamHub.subscribe(id)?.let { return@either it }
+        val agent = agentRepository.agentById(id) ?: raise(AppError.NotFound("Agent not found: $id"))
+        flowOf(AgentStreamEvent.Done(agent.status))
+    }
 
-    suspend fun status(provider: String) = either {
-        val status = provider.provide().status().bind()
-        val delimiter = "Logged in as "
-        if (!status.output.contains(delimiter)) raise(AppError.Unauthorized("Not logged in"))
-        status.copy(
-            output = status.output.substringAfter("Logged in as ").substringBefore("\n")
+    /**
+     * Starts the run in the background and publishes its events to [streamHub].
+     * The hub is opened before the request returns so the client can connect to the stream right after.
+     */
+    private fun launchRun(chatId: String, block: suspend () -> Either<AppError, *>) {
+        historyCache.invalidate(chatId)
+        streamHub.start(chatId)
+        launch {
+            var status = AgentStatus.FAILED
+            try {
+                agentRepository.updateStatus(chatId, AgentStatus.RUNNING)
+                block()
+                    .onLeft { streamHub.emit(chatId, AgentStreamEvent.Error(it.message)) }
+                    .onRight { status = AgentStatus.COMPLETED }
+            } finally {
+                agentRepository.updateStatus(chatId, status)
+                streamHub.finish(chatId, status)
+            }
+        }
+    }
+
+    private suspend fun runAgent(
+        provider: AgentCli,
+        chatId: String,
+        sessionId: String?,
+        prompt: String,
+        model: String,
+    ): Either<AppError, Unit> = either {
+        var failure: String? = null
+        provider.acp.prompt(
+            cwd = projectDir(chatId),
+            sessionId = sessionId,
+            prompt = prompt,
+            model = model,
+            onSession = { if (it != sessionId) agentRepository.updateSessionId(chatId, it) },
         )
+            .catch { failure = it.message ?: "Agent failed" }
+            .collect { event ->
+                streamHub.emit(chatId, event)
+                if (event is AgentStreamEvent.TurnEnded && event.stopReason == "refusal") failure = "Agent refused the prompt"
+            }
+        failure?.let { raise(AppError.Internal(it)) }
+    }
+
+    suspend fun logout(provider: String) = provider.provide().logout()
+        .also { statusCache.invalidate(provider) }
+
+    /** Only a logged-in result is cached; while waiting for login, every poll asks the CLI. */
+    suspend fun status(provider: String): Either<AppError, ShellResult> = statusCache.getOrLoad(provider) {
+        either {
+            val status = provider.provide().status().bind()
+            val delimiter = "Logged in as "
+            if (!status.output.contains(delimiter)) raise(AppError.Unauthorized("Not logged in"))
+            status.copy(
+                output = status.output.substringAfter("Logged in as ").substringBefore("\n")
+            )
+        }
     }
 
     suspend fun login(provider: String) = provider.provide().login()
+        .also { statusCache.invalidate(provider) }
 
-    suspend fun models(provider: String) = provider.provide().models()
+    // In Cursor every call leaves an empty session under ~/.cursor/acp-sessions; the cache limits that too
+    suspend fun models(provider: String) = modelsCache.getOrLoad(provider) { acp { provider.provide().acp.models(Folders.HOME) } }
 
+    private fun projectDir(chatId: String) = Folders.getProjectDir(chatId)
+
+    private suspend fun <T> acp(block: suspend () -> T): Either<AppError, T> =
+        Either.catch { block() }.mapLeft { AppError.Internal(it.message ?: "ACP request failed") }
+
+    private companion object {
+        // One-off questions such as commit messages / PR text; if the agent can't match the model it uses its own default
+        const val ONE_OFF_MODEL = "auto"
+    }
 }
+
+/** For pre-ACP agents the session id was the same as the chat id (`claude --session-id`, `agent --resume`). */
+private val AgentDto.sessionKey: String
+    get() = sessionId ?: id

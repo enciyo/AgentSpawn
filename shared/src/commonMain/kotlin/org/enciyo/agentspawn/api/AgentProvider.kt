@@ -1,7 +1,8 @@
 package org.enciyo.agentspawn.api
 
 enum class AgentProvider {
-    Cursor;
+    Cursor,
+    Claude;
 
 
     companion object {

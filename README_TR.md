@@ -34,7 +34,7 @@ POST /agents/create
 
 → Ajan depoyu klonlar
 → Dal oluşturur
-→ Cursor CLI ile kod yazar
+→ Ajan ile kod yazar (ACP üzerinden Cursor veya Claude Code)
 → Commit eder ve push eder
 → Pull Request açar
 ```
@@ -47,7 +47,10 @@ Bu sayede yapay zeka kodlama ajanları **n8n**, **Temporal** veya herhangi bir H
 
 | | Özellik | Açıklama |
 |---|---------|----------|
-| 🔌 | **CLI Ajanları için REST API** | Cursor'ı (yakında Claude Code, Cline) HTTP uç noktaları olarak sunun |
+| 🔌 | **CLI Ajanları için REST API** | Cursor ve Claude Code'u (yakında Cline) HTTP uç noktaları olarak sunun |
+| 🧩 | **Agent Client Protocol** | Tüm sağlayıcılar tek bir ortak istemciyle [ACP](https://agentclientprotocol.com) (stdio üzerinden JSON-RPC) ile yönetilir |
+| 📡 | **Canlı Akış** | Ajan çıktısı (mesajlar, düşünceler, araç çağrıları) Server-Sent Events olarak akar |
+| 🛠️ | **MCP Sunucuları** | Model Context Protocol sunucularını `/mcp` ile yönetin; ajanlara otomatik iletilir |
 | 🔄 | **Tam Git Otomasyonu** | Klonla → dal oluştur → kodla → commit → push → PR, tek bir API çağrısıyla |
 | 🤖 | **Ajan Yaşam Döngüsü** | Ajanları kalıcı durum ile oluşturun, devam ettirin, izleyin ve yönetin |
 | 🐙 | **GitHub Entegrasyonu** | Depo klonlama, dal yönetimi ve otomatik PR oluşturma |
@@ -76,8 +79,8 @@ Bu sayede yapay zeka kodlama ajanları **n8n**, **Temporal** veya herhangi bir H
      ┌────────▼───────┐  ┌───────▼────────┐  ┌───────▼────────┐
      │  GitHub CLI     │  │  Agent CLI     │  │  PostgreSQL    │
      │  klonla, dal    │  │  Cursor        │  │  durum ve      │
-     │  commit, push   │  │  (Claude Code) │  │  sohbet        │
-     │  PR oluştur     │  │  (Cline)       │  │  geçmişi       │
+     │  commit, push   │  │  Claude Code   │  │  sohbet        │
+     │  PR oluştur     │  │  (ACP ile)     │  │  geçmişi       │
      └────────────────┘  └────────────────┘  └────────────────┘
 ```
 
@@ -85,14 +88,16 @@ Bu sayede yapay zeka kodlama ajanları **n8n**, **Temporal** veya herhangi bir H
 
 1. Depoyu bir çalışma alanına klonla
 2. Belirtilen referanstan yeni bir dal oluştur
-3. CLI ajanını prompt ile çalıştır (ör. `cursor agent --resume`)
+3. Bir ACP oturumu aç (veya yükle) ve prompt'u gönder; ilerleme `/agents/{id}/stream` üzerinden akar
 4. Ajanın değişiklik yapıp yapmadığını kontrol et
 5. Ajan aracılığıyla commit mesajı oluştur
 6. Commit et ve dala push et
 7. Ajan aracılığıyla PR başlığı ve açıklaması oluştur
 8. GitHub'da pull request aç
 
-**Devam ettirme akışı:** Mevcut bir ajana takip prompt'u gönderin — dalı checkout eder, ajanı tekrar çalıştırır ve yeni değişiklikleri push eder.
+**Devam ettirme akışı:** Mevcut bir ajana takip prompt'u gönderin — dalı checkout eder, konuşmanın devam etmesi için ajanın ACP oturumunu yeniden yükler (`session/load`) ve yeni değişiklikleri push eder.
+
+`/agents/create` ve `/agents/resume` hemen döner; çalışma arka planda sürer. Canlı takip için `/agents/{id}/stream`'e bağlanın — geç bağlanan bir istemci de çalışmanın tamamını baştan alır.
 
 ---
 
@@ -106,9 +111,9 @@ Bu sayede yapay zeka kodlama ajanları **n8n**, **Temporal** veya herhangi bir H
                    │ HTTP (Ktor Client)
 ┌──────────────────▼──────────────────────────┐
 │           server (Ktor Backend)             │
-│  Route: Agent · Shell · GitHub              │
-│  CLI: AgentCli · GitCli · GitHubCli ·       │
-│       ShellRunner · FileCli · SqlLiteCli    │
+│  Route: Agent · Shell · GitHub · MCP        │
+│  CLI: AgentCli · AcpAgent · GitCli ·        │
+│       GitHubCli · ShellRunner · FileCli     │
 │  DI: Koin  ·  FP: Arrow                    │
 └──────────────────┬──────────────────────────┘
                    │ JDBC (Exposed + Flyway)
@@ -125,33 +130,43 @@ Bu sayede yapay zeka kodlama ajanları **n8n**, **Temporal** veya herhangi bir H
 
 ### Sağlayıcı Sistemi
 
-Yeni CLI ajanları, `AgentCli` arayüzü uygulanarak ve `DefaultAgentProviderFactory` içinde kayıt edilerek eklenir:
+Tüm sohbet, geçmiş ve model işlemleri [Agent Client Protocol](https://agentclientprotocol.com) üzerinden yapılır. Bir sağlayıcı yalnızca ACP ajanını başlatan komutu ve ACP'nin kapsamadığı hesap/dosya işlemlerini sağlar:
 
 ```kotlin
 interface AgentCli {
+    val acp: AcpAgent  // ACP üzerinden sohbet, geçmiş, modeller
+
     suspend fun login(): Either<AppError, ShellResult>
-    suspend fun models(): Either<AppError, List<String>>
-    suspend fun createChat(): Either<AppError, ShellResult>
-    suspend fun resumeChat(id: String, prompt: String, model: String): Either<AppError, ShellResult>
-    suspend fun prompt(id: String, prompt: String): Either<AppError, ShellResult>
-    // ...
+    suspend fun logout(): Either<AppError, ShellResult>
+    suspend fun status(): Either<AppError, ShellResult>
+    suspend fun listChats(): Either<AppError, List<String>>
+    suspend fun clear()
 }
 ```
 
-Şu anda desteklenen: **Cursor**. Sırada: **Claude Code**, **Cline**.
+Yeni sağlayıcılar `AgentCli`'yi uygular ve `DefaultAgentProviderFactory` içinde kayıt edilir.
+
+| Sağlayıcı | ACP ajan komutu |
+|-----------|-----------------|
+| **Cursor** | `agent acp` (Cursor CLI'a dahil) |
+| **Claude Code** | `npx -y @agentclientprotocol/claude-agent-acp` (resmi adaptör) |
+
+Sırada: **Cline**.
+
+ACP istemcisi `server/cli/acp` altındadır: `AcpConnection` ajanın stdio'su üzerinden JSON-RPC 2.0'ı yönetir (izin istekleri otomatik onaylanır), `AcpAgent` ise bunun üzerine `prompt`, `history`, `ask` ve `models` sunar. İstek ve cevaplar tipli `@Serializable` data class'lardır; metot adları `AcpMethod` enum'undan gelir.
 
 ### Modüller
 
 | Modül | Yol | Amaç |
 |-------|-----|------|
 | `composeApp` | `/composeApp` | Compose Multiplatform web ön yüz (JS + Wasm) |
-| `server` | `/server` | Ajan, kabuk ve GitHub özellikleriyle Ktor REST API |
+| `server` | `/server` | Ajan, kabuk, GitHub ve MCP özellikleriyle Ktor REST API |
 | `shared` | `/shared` | Kotlin Multiplatform paylaşımlı DTO, enum ve veri modelleri |
 | `docs` | `/docs` | Otomatik oluşturulan Swagger/OpenAPI dokümantasyonu |
 
 ### Sunucu Katmanlama
 
-Sunucu **Route → Service → Repository/CLI** desenini izler. Her özellik alanı (Agent, Shell, GitHub) kendi route, service ve veri erişim katmanıyla bağımsızdır.
+Sunucu **Route → Service → Repository/CLI** desenini izler. Her özellik alanı (Agent, Shell, GitHub, MCP) kendi route, service ve veri erişim katmanıyla bağımsızdır.
 
 ---
 
@@ -166,12 +181,17 @@ Sunucu **Route → Service → Repository/CLI** desenini izler. Her özellik ala
 | `POST` | `/agents/create` | Ajan oluştur: depoyu klonla, CLI ajanını çalıştır, push et ve PR aç |
 | `POST` | `/agents/resume` | Takip prompt'u ile ajana devam et |
 | `GET` | `/agents/list` | Tüm ajanları listele |
-| `GET` | `/agents/{id}` | Sohbet mesajlarıyla ajan detayını getir |
+| `GET` | `/agents/{id}` | Sohbet geçmişiyle (ACP oturumundan yeniden oynatılır) ajan detayını getir |
+| `GET` | `/agents/{id}/stream` | Ajan çalışmasının Server-Sent Events akışı (`AgentStreamEvent`) |
 | `GET` | `/agents/status?provider=Cursor` | Ajan sağlayıcı doğrulama durumunu kontrol et |
 | `GET` | `/agents/login?provider=Cursor` | Ajan sağlayıcısına giriş yap |
 | `GET` | `/agents/logout?provider=Cursor` | Ajan sağlayıcısından çıkış yap |
 | `GET` | `/agents/models?provider=Cursor` | Kullanılabilir modelleri listele |
 | `GET` | `/agents/clear` | Tüm ajanları temizle |
+
+`provider` değeri `Cursor` veya `Claude` olabilir.
+
+**Akış olayları** (`AgentStreamEvent`): `Update` (bir ACP `session/update`: mesaj/düşünce parçaları, araç çağrıları), `TurnStarted`, `TurnEnded` (ACP `stopReason` ile), `Error` ve `Done` (commit/push/PR dahil çalışma bitti).
 
 ### Kabuk Uç Noktaları — `/shell`
 
@@ -191,16 +211,28 @@ Sunucu **Route → Service → Repository/CLI** desenini izler. Her özellik ala
 | `POST` | `/github/branch` | Bir depo için dal ara |
 | `GET` | `/github/token` | GitHub doğrulama belirtecini al |
 
+### MCP Uç Noktaları — `/mcp`
+
+| Metot | Yol | Açıklama |
+|-------|-----|----------|
+| `GET` | `/mcp` | MCP yapılandırmasını getir |
+| `PUT` | `/mcp` | MCP yapılandırmasını değiştir |
+| `POST` | `/mcp/servers` | MCP sunucusu ekle veya güncelle |
+| `DELETE` | `/mcp/servers/{name}` | MCP sunucusunu kaldır |
+
+Yapılandırma `~/.agentspawn/mcp.json` dosyasında tutulur ve ACP `session/new` / `session/load` ile Claude Code'a iletilir; ayrıca Cursor'ın kendisinin okuduğu `~/.cursor/mcp.json` dosyasına da yazılır.
+
 ---
 
 ## Yol Haritası
 
-- [ ] **Claude Code sağlayıcısı** — Claude Code CLI için `AgentCli` uygulaması
+- [x] **Claude Code sağlayıcısı** — Resmi ACP adaptörü üzerinden Claude Code
+- [x] **Agent Client Protocol** — Tüm sağlayıcılar ACP ile yönetiliyor
 - [ ] **Cline sağlayıcısı** — Cline CLI için `AgentCli` uygulaması
-- [ ] **MCP desteği** — Ajan başına eklenebilir Model Context Protocol sunucuları
+- [x] **MCP desteği** — Eklenebilir Model Context Protocol sunucuları
 - [ ] **Beceriler ve Kurallar** — Yapılandırılabilir ajan becerileri ve kural setleri
 - [ ] **Kod Tabanı İndeksleme** — Daha ucuz, bağlam farkındalıklı ajan kullanımı için depo indeksleme
-- [ ] **WebSocket akışı** — Gerçek zamanlı ajan çıktı akışı
+- [x] **Canlı akış** — Server-Sent Events ile gerçek zamanlı ajan çıktısı
 - [ ] **Çoklu kullanıcı desteği** — Rol tabanlı erişim denetimi
 - [ ] **Görev kuyruğu ve zamanlama** — Ajan görevlerini kuyruğa alma ve zamanlama
 - [ ] **Pano analizleri** — Belirteç kullanımı, başarı oranları, ajan performansı
@@ -214,7 +246,8 @@ Sunucu **Route → Service → Repository/CLI** desenini izler. Her özellik ala
 - **JDK 23+** (Eclipse Temurin önerilir)
 - **Docker** (isteğe bağlı, konteyner tabanlı dağıtım için)
 - **PostgreSQL 17** (veya Docker Compose kullanın)
-- **Cursor CLI** (Cursor sağlayıcısı için)
+- **Cursor CLI** (Cursor sağlayıcısı için; `agent acp` komutunu sağlar)
+- **Claude Code** + **Node.js / npx** (Claude sağlayıcısı için; ACP adaptörü `npx` ile çalışır)
 - Gradle wrapper dahildir — ayrı kurulum gerekmez
 
 ### Docker Compose ile Hızlı Başlangıç
@@ -289,10 +322,12 @@ AgentSpawn/
 │   ├── features/
 │   │   ├── agent/             # Ajan CRUD ve yaşam döngüsü
 │   │   ├── shell/             # Kabuk komutu çalıştırma
-│   │   └── github/            # GitHub entegrasyonu
+│   │   ├── github/            # GitHub entegrasyonu
+│   │   └── mcp/               # MCP sunucu yapılandırması
 │   ├── cli/                   # CLI soyutlamaları
+│   │   ├── acp/               # Agent Client Protocol istemcisi (stdio üzerinden JSON-RPC)
 │   │   ├── agent/             # AgentCli arayüzü ve fabrika
-│   │   └── providers/         # Sağlayıcı uygulamaları (Cursor)
+│   │   └── providers/         # Sağlayıcı uygulamaları (Cursor, Claude)
 │   ├── configs/               # Ktor eklenti yapılandırmaları
 │   └── resources/             # application.conf, Flyway geçişleri
 ├── shared/                    # KMP Paylaşımlı Modeller

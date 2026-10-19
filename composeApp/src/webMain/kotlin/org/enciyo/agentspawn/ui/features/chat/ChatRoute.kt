@@ -27,6 +27,7 @@ import org.enciyo.agentspawn.api.AgentDto
 import org.enciyo.agentspawn.ui.design.DrawerTokens
 import org.enciyo.agentspawn.ui.features.components.DisplayScreen
 import org.enciyo.agentspawn.ui.features.customize.CustomizeScreen
+import androidx.lifecycle.compose.LifecycleStartEffect
 import org.koin.compose.viewmodel.koinViewModel
 
 
@@ -51,6 +52,12 @@ fun ChatRoute(
     onHome: () -> Unit,
 ) {
     val state by viewModel.state.collectAsState()
+
+    // Agent list polling stops when the tab is hidden (lifecycle STOP)
+    LifecycleStartEffect(viewModel) {
+        viewModel.onVisibilityChanged(true)
+        onStopOrDispose { viewModel.onVisibilityChanged(false) }
+    }
 
     LaunchedEffect(Unit) {
         viewModel.event.collect { event ->

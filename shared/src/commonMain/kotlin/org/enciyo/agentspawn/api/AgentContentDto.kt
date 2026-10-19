@@ -3,11 +3,13 @@ package org.enciyo.agentspawn.api
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonClassDiscriminator
+import org.enciyo.agentspawn.api.acp.SessionUpdate
 
 @Serializable
 data class AgentContentDto(
     val chatId: String,
-    val messages: List<AgentMessageDto>,
+    /** Conversation history replayed via ACP `session/load`; empty while the agent is running, since history then comes from the stream. */
+    val updates: List<SessionUpdate>,
     val status: AgentStatus,
     val repository: String,
     val branch: String,

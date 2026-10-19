@@ -7,17 +7,22 @@ import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import org.enciyo.agentspawn.AppError
+import org.enciyo.agentspawn.TtlCache
 import org.enciyo.agentspawn.api.GithubLogin
 import org.enciyo.agentspawn.api.GithubStatus
 import org.enciyo.agentspawn.cli.Folders
 import org.enciyo.agentspawn.cli.GitCli
 import org.enciyo.agentspawn.cli.GitHubCli
+import kotlin.time.Duration.Companion.minutes
 
 
 class GithubService(
     private val gitCli: GitCli,
     private val gitHubCli: GitHubCli,
 ) {
+
+    private val repoSearchCache = TtlCache<Pair<String, Int>, List<String>>(2.minutes)
+    private val branchCache = TtlCache<String, List<String>>(2.minutes)
 
     companion object {
         private val ONE_TIME_CODE_REGEX = Regex("""one-time code:\s*([A-Z0-9-]+)""", RegexOption.IGNORE_CASE)
@@ -115,25 +120,35 @@ class GithubService(
         true
     }
 
+    // If not logged in, the actual gh command already fails; `gh auth status` isn't checked separately
     suspend fun repositories() = either {
-        val status = gitHubCli.status().bind()
         val repositories = gitHubCli.repositories().bind()
         parseJson(repositories.output, GitHubCli.Json.NAME_WITH_OWNER)
     }
 
-    suspend fun searchRepos(key: String, limit: Int) = either {
-        val status = gitHubCli.status().bind()
-        val repositories = gitHubCli.searchRepos(key, limit).bind()
-        parseJson(repositories.output, GitHubCli.Json.FULL_NAME)
+    /** Each search makes 3 GitHub API calls (user, orgs, search; search limit is 30/min); results are cached briefly. */
+    suspend fun searchRepos(key: String, limit: Int) = repoSearchCache.getOrLoad(key to limit) {
+        either {
+            val repositories = gitHubCli.searchRepos(key, limit).bind()
+            if (repositories.exitCode != 0) raise(AppError.Internal(repositories.error.ifBlank { "Repository search failed" }))
+            parseJson(repositories.output, GitHubCli.Json.FULL_NAME)
+        }
     }
 
+    /** All of the repo's branches are fetched once (paginated) and filtered in memory instead of refetching on every keystroke. */
     suspend fun searchBranches(
         key: String,
         repo: String,
     ) = either {
-        val status = gitHubCli.status().bind()
-        val branches = gitHubCli.searchBranch(key, repo).bind()
-        branches.output.lines()
+        val branches = branchCache.getOrLoad(repo) {
+            either {
+                val result = gitHubCli.searchBranch(search = "", repo = repo).bind()
+                // Don't cache a failed result (e.g. auth/network) as an empty list
+                if (result.exitCode != 0) raise(AppError.Internal(result.error.ifBlank { "Failed to list branches: $repo" }))
+                result.output.lines().filter { it.isNotBlank() }
+            }
+        }.bind()
+        branches.filter { it.contains(key, ignoreCase = true) }
     }
 
     suspend fun token() = either {

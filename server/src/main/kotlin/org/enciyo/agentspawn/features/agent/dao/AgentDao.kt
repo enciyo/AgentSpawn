@@ -17,5 +17,6 @@ class AgentDao(id: EntityID<Int>) : IntEntity(id) {
     var provider by AgentTable.provider
     var status by AgentTable.status
     var lastModel by AgentTable.lastModel
+    var sessionId by AgentTable.sessionId
 
 }
